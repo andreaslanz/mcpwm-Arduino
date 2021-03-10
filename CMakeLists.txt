@@ -24,6 +24,7 @@ add_compile_definitions(
         #WITH_POSIX
         #CONFIG_AUTOSTART_ARDUINO
         )
+# Pfad zu arduino-esp23 (idf-release/4.0)
 list(APPEND EXTRA_COMPONENT_DIRS "C:/ESP/arduino-esp32")
 #set(COMPONENTS "arduino-esp32")
 
