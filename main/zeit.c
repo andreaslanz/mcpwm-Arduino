@@ -1,4 +1,6 @@
 #include <esp_types.h>
+//#define LOG_LOCAL_LEVEL ESP_LOG_ERROR
+#include <esp_log.h>
 
 
 #include "include/zeit.h"
@@ -11,6 +13,7 @@ static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1};
 #endif
 
 uint32_t Zahl;
+static const char *TAG = "cap-isr";
 
 
 //DEBUGG
@@ -101,9 +104,8 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
     capture evt;
     static long count=0;
     uint32_t t;
+
     while (1) {
-
-
         xQueueReceive(cap_queue, &evt, portMAX_DELAY);
 //        t=esp_timer_get_time();
 
@@ -119,9 +121,9 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
 //            if(!(count++ % 200) ){
 
 //                xQueueReset(cap_queue);
-
-                printf("%d\n",
-                       current_cap_value[0]);
+                ESP_LOGI(TAG,"val:%d\n",current_cap_value[0]);
+//                printf("%d\n",
+//                       current_cap_value[0]);
                 Zahl=current_cap_value[0];
 //            }
             //printf("%lld",esp_timer_get_time()-time);
@@ -158,26 +160,22 @@ static void IRAM_ATTR isr_handler()
 
 
     mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status Original
-    Drag_mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status
-//    evt.intr_raw_stat = MCPWM[MCPWM_UNIT_0]->int_raw.val; //Read interrupt status
-//    evt.intr_stat = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status
-//    evt.edge = MCPWM[MCPWM_UNIT_0]->cap_status.cap0_edge; //Read interrupt status
+//    Drag_mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status
+    /**
+     * for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)
+     */
+    ESP_EARLY_LOGI(TAG,"sta %d\n",mcpwm_intr_status);
 
     if (MCPWM[MCPWM_UNIT_0]->int_st.cap0_int_st) { //Check for interrupt on rising edge on CAP0 signal
 //    if (mcpwm_intr_status & CAP0_INT_EN) { //Check for interrupt on rising edge on CAP0 signal //original
         evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
-//        evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP0); //get capture signal counter value
         evt.sel_cap_signal = MCPWM_SELECT_CAP0;
-//        MCPWM[MCPWM_UNIT_0]->int_st.val=0; //a.l.
 
-//        t=esp_timer_get_time();
-//        time=esp_timer_get_time();
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
         MCPWM[MCPWM_UNIT_0]->cap_cfg_ch->sw=0;
-//        xQueueGenericSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken,queueOVERWRITE );
-//        MCPWM[MCPWM_UNIT_0]->int_clr.cap0_int_clr = 1;
 
     }
+
     MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_intr_status;  //Original
     if (xHigherPriorityTaskWoken) {
         // Actual macro used here is port specific.
@@ -287,8 +285,7 @@ static void mcpwm_example_config(void *arg)
 //    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
 //    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     //enable interrupt, so each this a rising edge occurs interrupt is triggered
-    //MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
-    MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN ;  //Enable interrupt on  CAP0 signal
+    MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
     mcpwm_isr_register(MCPWM_UNIT_0, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
 #endif
     vTaskDelete(NULL);
