@@ -1,11 +1,13 @@
 #include <esp_types.h>
-//#define LOG_LOCAL_LEVEL ESP_LOG_ERROR
-#include <esp_log.h>
 
 
-#include "include/zeit.h"
 #include "include/main.h"
 #include "esp_timer.h"
+#define  LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+//#define  LOG_LOCAL_LEVEL ESP_LOG_INFO
+#include <esp_log.h>
+#include "include/zeit.h"
+#include "include/display.h"
 
 xQueueHandle cap_queue;
 #if MCPWM_EN_CAPTURE
@@ -13,7 +15,11 @@ static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1};
 #endif
 
 uint32_t Zahl;
-static const char *TAG = "cap-isr";
+dr_Dragrace_t Dragrace;
+
+cap_source_sw_t soft_cap_intr;
+
+static const char *TAG = "zeit.c";
 
 
 //DEBUGG
@@ -103,45 +109,31 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
     uint32_t *previous_cap_value = (uint32_t *)malloc(CAP_SIG_NUM*sizeof(uint32_t));
     capture evt;
     static long count=0;
-    uint32_t t;
+
 
     while (1) {
         xQueueReceive(cap_queue, &evt, portMAX_DELAY);
-//        t=esp_timer_get_time();
 
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP0) {
-            current_cap_value[0] = evt.capture_signal - previous_cap_value[0];
-            previous_cap_value[0] = evt.capture_signal;
-            current_cap_value[0] = (current_cap_value[0] /80);
-//            current_cap_value[0] = (current_cap_value[0] / 1000) * (100000000000 / rtc_clk_apb_freq_get());
-//            current_cap_value[0] = (current_cap_value[0] / 10000) * (10000000000 / rtc_clk_apb_freq_get());
-//            printf("CAP0 : %d \265s %ld interupt: %d intr-raw %x intr_sta %x edge %u \n",
-//                   current_cap_value[0],count++,interupt_count,evt.intr_raw_stat,evt.intr_stat,evt.edge);
-//            t=esp_timer_get_time()-time;
-//            if(!(count++ % 200) ){
 
-//                xQueueReset(cap_queue);
-                ESP_LOGI(TAG,"val:%d\n",current_cap_value[0]);
-//                printf("%d\n",
-//                       current_cap_value[0]);
-                Zahl=current_cap_value[0];
-//            }
-            //printf("%lld",esp_timer_get_time()-time);
+            Dragrace.Zeiten.Links.Lichtschr3=DURCHFAHREN;
+            Dragrace.Status.Gestartet=true;
+            Dragrace.Status.LinkeBahn.Lichschr1=1;
+            Dragrace.Status.LinkeBahn.Fruehstart=1;
+
+            ESP_LOGD(TAG, "val:%d\n", current_cap_value[0]);
+            Zahl = current_cap_value[0];
+            /*current_cap_value[0] = evt.capture_signal - previous_cap_value[0];
+            previous_cap_value[0] = evt.capture_signal;
+            current_cap_value[0] = (current_cap_value[0] / 80);*/
         }
-/*
+
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP1) {
-            current_cap_value[1] = evt.capture_signal - previous_cap_value[1];
-            previous_cap_value[1] = evt.capture_signal;
-            current_cap_value[1] = (current_cap_value[1] / 10000) * (10000000000 / rtc_clk_apb_freq_get());
-            printf("CAP1 : %d us\n", current_cap_value[1]);
         }
+
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP2) {
-            current_cap_value[2] = evt.capture_signal -  previous_cap_value[2];
-            previous_cap_value[2] = evt.capture_signal;
-            current_cap_value[2] = (current_cap_value[2] / 10000) * (10000000000 / rtc_clk_apb_freq_get());
-            printf("CAP2 : %d us\n", current_cap_value[2]);
+
         }
-*/
     }
 }
 
@@ -153,49 +145,45 @@ static void IRAM_ATTR isr_handler()
 {
     uint32_t mcpwm_intr_status;
     BaseType_t xHigherPriorityTaskWoken;
+    capture evt;
+
     xHigherPriorityTaskWoken = pdFALSE;
     interupt_count++;
-    capture evt;
-    uint32_t t;
 
+    /**Read interrupt status*/
+    mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val;
+    ESP_EARLY_LOGD(TAG,"sta %d\n",mcpwm_intr_status);  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
 
-    mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status Original
-//    Drag_mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val; //Read interrupt status
-    /**
-     * for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)
-     */
-    ESP_EARLY_LOGI(TAG,"sta %d\n",mcpwm_intr_status);
-
-    if (MCPWM[MCPWM_UNIT_0]->int_st.cap0_int_st) { //Check for interrupt on rising edge on CAP0 signal
-//    if (mcpwm_intr_status & CAP0_INT_EN) { //Check for interrupt on rising edge on CAP0 signal //original
+    /**Check for interrupt on rising edge on CAP0 signal original*/
+    if (mcpwm_intr_status & CAP0_INT_EN) {
         evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_SELECT_CAP0;
-
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        MCPWM[MCPWM_UNIT_0]->cap_cfg_ch->sw=0;
-
+        ESP_EARLY_LOGD(TAG,"CAP0\n");
     }
 
-    MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_intr_status;  //Original
+    /**Check for interrupt on rising edge on CAP1 signal original*/
+    if (mcpwm_intr_status & CAP1_INT_EN) {
+        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP1]; //get capture signal counter value
+        evt.sel_cap_signal = MCPWM_SELECT_CAP1;
+        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
+        ESP_EARLY_LOGD(TAG,"CAP1\n");
+    }
+
+    /**Check for interrupt on rising edge on CAP2 signal original*/
+    if (mcpwm_intr_status & CAP2_INT_EN) {
+        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP2]; //get capture signal counter value
+        evt.sel_cap_signal = MCPWM_SELECT_CAP2;
+        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
+        ESP_EARLY_LOGD(TAG,"CAP2\n");
+    }
+
+    /**Clear Interuppt*/
+    MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_intr_status;
     if (xHigherPriorityTaskWoken) {
-        // Actual macro used here is port specific.
-        portYIELD_FROM_ISR ();
+        portYIELD_FROM_ISR (); /*Gehe direkt zur Verarbeitung*/
     }
 
-
-
-    //    if (mcpwm_intr_status & CAP1_INT_EN) { //Check for interrupt on rising edge on CAP0 signal
-//        evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP1); //get capture signal counter value
-//        evt.sel_cap_signal = MCPWM_SELECT_CAP1;
-//        xQueueSendFromISR(cap_queue, &evt, NULL);
-//    }
-//    if (mcpwm_intr_status & CAP2_INT_EN) { //Check for interrupt on rising edge on CAP0 signal
-//        evt.capture_signal = mcpwm_capture_signal_get_value(MCPWM_UNIT_0, MCPWM_SELECT_CAP2); //get capture signal counter value
-//        evt.sel_cap_signal = MCPWM_SELECT_CAP2;
-//        xQueueSendFromISR(cap_queue, &evt, NULL);
-//    }
-//    MCPWM[MCPWM_UNIT_0]->int_clr.val = 0;
-//    MCPWM[MCPWM_UNIT_0]->int_clr.cap0_int_clr = 1;
 }
 #endif
 
@@ -290,8 +278,15 @@ static void mcpwm_example_config(void *arg)
 #endif
     vTaskDelete(NULL);
 }
+/**Software Interrupts für Test*/
 void start(){
-    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch->sw=1;
+    soft_cap_intr.mcpwm0.cap0_sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[0].sw=1;
+}
+void L1(){
+    soft_cap_intr.mcpwm0.cap1_sw=1;
+
+    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[1].sw=1;
 }
  void mcpwm_setup()
 {

@@ -1,7 +1,3 @@
-
-
-
-
 <!doctype html>
 <html>
 <head>
@@ -10,22 +6,23 @@
 </head>
 <body>
 <div id="newContent">fuck</div>
+<div id="Zahl">fuck</div>
 <a href="http://jquery.com/">jQuery</a>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script><script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
     $( document ).ready(function() {
-        $( "a" ).click(function( event ) {
-            alert( "The link will no longer take you to jquery.com" );
-            event.preventDefault();
-        });
+        $("#Zahl").load("http://192.168.1.127/zahl");
+        /**
+         * Get IP
+         * */
+        // let s;
+        // for (let a = 1; a < 256; a++) {
+        //     s = "http://192.168.1." + a + "/ip";
+        //     console.log(a);
+        //     $("#newContent").load(s/*, function (){$("#newContent").append(s);}*/);
+        // }
     });
-
-    // $.get( "http://192.168.1.127/", function( response ) {
-    //     console.log( response ); // server response
-    //     $( "#newContent" ).text( response );
-    // });
-    $( "#newContent" ).load( "http://192.168.1.127/" );
-
-
 </script>
 
 </body>

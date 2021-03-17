@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <!-- Jquery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.js"></script>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0"
+            crossorigin="anonymous"></script>
+
+    <title>Dragrace</title>
+<!-----------------------------
+
+   Programme für Dragrace
+
+------------------------------->
+    <script>
+        /*Dokument geladen*/
+        $(document).ready(function () {
+            var refreshInterval = '';
+
+            $.ajaxSetup({timeout:5000}); //in milliseconds
+
+
+            // Start Knopf
+            $("#start").click(function () {
+                $.get("http://192.168.1.127/start");
+            });
+            // Refresh Knopf
+            $("#refresh").click(function () {
+                if(refreshInterval){
+                    // Refresh off
+                    clearInterval(refreshInterval);
+                    $('#refresh').html('Start auto Refresh');
+                    refreshInterval='';
+                }else {
+                    // Refresh on
+                    refreshInterval=setInterval(function(){
+                        $('#zahl').load("http://192.168.1.127/zahl");
+                        $('#refresh').html('Stop auto Refresh');
+                    },600);
+                }
+            });
+
+        });
+    </script>
+
+</head>
+
+<body>
+
+
+<div class="container text-center">
+
+    <!--Bedinung-->
+    <div class="card">
+        <div class="card-header "> Dragrace</div>
+        <div class="card-body h-50">
+            <!--Start-Knopf-->
+            <button style="height: 100px !important;" id="start" type="button" class="w-100 btn h-75 btn-primary">Start</button>
+            <!--Refresh-Knopf-->
+            <button id="refresh" type="button" class="w-100 btn  btn-info mt-1">Start auto Refresh</button>
+        </div>
+    </div>
+    <!--Ausgabe Zeiten-->
+    <div class="card mt-3">
+        <div class="card-header "> Zeit</div>
+        <div class="card-body h-50 ">
+            <p id="zahl">Zahl</p>
+        </div>
+    </div>
+
+
+</div>
+
+
+
+</body>
+</html>

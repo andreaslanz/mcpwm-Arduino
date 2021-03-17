@@ -33,6 +33,7 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
+#include <ArduinoJson.h>
 #include "include/web.h"
 #include "include/zeit.h"
 
@@ -42,6 +43,7 @@ const char *ssid = "ibg-81471";
 const char *password = "Stupid99x.";
 
 WebServer server(80);
+static IPAddress IP; //Host
 
 const int led = LED_BUILTIN;
 
@@ -51,6 +53,31 @@ void setCrossOrigin(){
     server.sendHeader(F("Access-Control-Allow-Methods"), F("PUT,POST,GET,OPTIONS"));
     server.sendHeader(F("Access-Control-Allow-Headers"), F("*"));
 };
+
+void handleZahl(){
+    static int a=0;
+    DynamicJsonDocument doc(512);
+    doc["Zahl"]=Zahl;
+    doc["counter"]=a++;
+    char buf[64];
+    serializeJson(doc,buf);
+    //sprintf(buf,"%d",Zahl);
+    setCrossOrigin();
+    server.send(200, "application/json", buf);
+}
+
+void handle_ip(){
+    char buf[16];
+//    sprintf(buf,"%s",IP.toString());
+    setCrossOrigin();
+    server.send(200, "text/html", IP.toString());
+}
+
+void handle_start(){
+    setCrossOrigin();
+    server.send(200, "text/html");
+    start();
+}
 
 void handleRoot() {
     digitalWrite(led, 1);
@@ -72,7 +99,7 @@ void handleRoot() {
   <body>\
     <h1>Hello from ESP32!</h1>\
     <p>Uptime: %02d:%02d:%02d</p>\
-    <p>Uptime: %u</p>\
+    <p>Zahl: %u</p>\
     <img src=\"/test.svg\" />\
         </body>\
 </html>",
@@ -115,6 +142,7 @@ void Webserver_Setup(void) {
     // Wait for connection
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
+        IP=WiFi.localIP();
         Serial.print(".");
     }
 
@@ -129,6 +157,9 @@ void Webserver_Setup(void) {
     }
 
     server.on("/", handleRoot);
+    server.on("/start", handle_start);
+    server.on("/zahl", handleZahl);
+    server.on("/ip", handle_ip);
     server.on("/test.svg", drawGraph);
     server.on("/inline", []() {
         server.send(200, "text/plain", "this works as well");

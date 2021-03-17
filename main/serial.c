@@ -30,6 +30,10 @@ _Noreturn static void uart_event_task(void *pvParameters)
                             printf("Start\n");
                             start();
                         }
+                        if(c=='1'){
+                            printf("L1\n");
+                            L1();
+                        }
                         uart_write_bytes(EX_UART_NUM, (const char*) &c, 1);
                     }
                     break;

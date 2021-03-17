@@ -1,5 +1,8 @@
 #ifndef mcpwm
 #define mcpwm
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdio.h>
 #include "string.h"
@@ -11,10 +14,6 @@
 #include "driver/mcpwm.h"
 #include "soc/mcpwm_periph.h"
 
-#define MCPWM_EN_CARRIER 0   //Make this 1 to test carrier submodule of mcpwm, set high frequency carrier parameters
-#define MCPWM_EN_DEADTIME 0  //Make this 1 to test deadtime submodule of mcpwm, set deadtime value and deadtime mode
-#define MCPWM_EN_FAULT 0     //Make this 1 to test fault submodule of mcpwm, set action on MCPWM signal on fault occurence like overcurrent, overvoltage, etc
-#define MCPWM_EN_SYNC 0      //Make this 1 to test sync submodule of mcpwm, sync timer signals
 #define MCPWM_EN_CAPTURE 1   //Make this 1 to test capture submodule of mcpwm, measure time between rising/falling edge of captured signal
 #define MCPWM_GPIO_INIT 1    //select which function to use to initialize gpio signals
 #define CAP_SIG_NUM 3   //Three capture signals
@@ -24,21 +23,96 @@
 #define CAP2_INT_EN BIT(29)  //Capture 2 interrupt bit
 
 
-#define GPIO_PWM0A_OUT 13   //Set GPIO 19 as PWM0A
-#define GPIO_PWM0B_OUT 37   //Set GPIO 18 as PWM0B
-#define GPIO_PWM1A_OUT 17   //Set GPIO 17 as PWM1A
-#define GPIO_PWM1B_OUT 38   //Set GPIO 16 as PWM1B
-#define GPIO_PWM2A_OUT 39   //Set GPIO 15 as PWM2A
-#define GPIO_PWM2B_OUT 22   //Set GPIO 14 as PWM2B
 #define GPIO_CAP0_IN   23   //Set GPIO 23 as  CAP0
 #define GPIO_CAP1_IN   25   //Set GPIO 25 as  CAP1
 #define GPIO_CAP2_IN   26   //Set GPIO 26 as  CAP2
-#define GPIO_SYNC0_IN   2   //Set GPIO 02 as SYNC0
-#define GPIO_SYNC1_IN   4   //Set GPIO 04 as SYNC1
-#define GPIO_SYNC2_IN   5   //Set GPIO 05 as SYNC2
-#define GPIO_FAULT0_IN 32   //Set GPIO 32 as FAULT0
-#define GPIO_FAULT1_IN 34   //Set GPIO 34 as FAULT1
-#define GPIO_FAULT2_IN 34   //Set GPIO 34 as FAULT2
+
+//SW interrupt
+typedef union  {
+    struct {
+        uint16_t cap0_sw: 1;                    /*Edge of last capture trigger on channel 0  0: posedge  1: negedge*/
+        uint16_t cap1_sw: 1;                    /*Edge of last capture trigger on channel 1  0: posedge  1: negedge*/
+        uint16_t cap2_sw: 1;                    /*Edge of last capture trigger on channel 2  0: posedge  1: negedge*/
+            };
+    uint16_t val;
+} cap_source_u;
+
+typedef struct {
+    union {
+        cap_source_u mcpwm0;
+        cap_source_u mcpwm1;
+    };
+    uint32_t val;
+}cap_source_sw_t;
+//
+// Konstanten
+//
+typedef  enum {
+    DR_LINKS,
+    DR_RECHRS
+}dr_Bahn_t;
+
+typedef  enum{
+    DR_LICHTSCHR1,
+    DR_LICHTSCHR2,
+    DR_LICHTSCHR3
+}dr_Lichtschr_t;
+
+typedef enum {
+    NICHT_DURCHFAHREN,
+    DURCHFAHREN
+}dr_lschr_durchfahrt;
+
+typedef  mcpwm_capture_signal_t dr_Start_Capture_Chanel_t ;
+
+//
+//Status
+//
+typedef union {
+    struct {
+        uint8_t Lichschr1:1;
+        uint8_t Lichschr2:1;
+        uint8_t Lichschr3:1;
+        uint8_t Fruehstart:1;
+        uint8_t Sieg:1;
+    };
+    uint8_t val;
+}dr_Bahn_Status_t;
+
+typedef struct {
+    union {
+        struct {
+            uint8_t Gestartet: 1;
+            uint8_t Laeuft: 1;
+            uint8_t Ready: 1;
+            uint8_t Fertig: 1;
+        };
+        uint8_t val;
+    };
+    dr_Bahn_Status_t LinkeBahn;
+    dr_Bahn_Status_t RechteBahn;
+} dr_Status_t;
+
+
+//Zeiten
+typedef struct {
+    uint32_t Lichtschr1;
+    uint32_t Lichtschr2;
+    uint32_t Lichtschr3;
+}dr_time_lichtschr_t;
+
+typedef struct {
+    uint32_t Time_Start;
+    dr_time_lichtschr_t Links;
+    dr_time_lichtschr_t Rechts;
+}dr_Zeiten_t;
+
+extern dr_Zeiten_t Zeiten;
+
+typedef struct {
+    dr_Status_t Status;
+    dr_Zeiten_t Zeiten;
+}dr_Dragrace_t;
 
 
 extern uint32_t Zahl;
@@ -54,9 +128,6 @@ typedef struct {
     mcpwm_capture_signal_t sel_cap_signal;
 } capture;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 
 static void mcpwm_example_gpio_initialize();
@@ -67,6 +138,7 @@ static void mcpwm_example_config(void *arg);
 void mcpwm_setup();
 void start();
 void L1();
+void L2();
 void L3();
 
 

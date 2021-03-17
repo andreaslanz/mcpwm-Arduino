@@ -11,10 +11,11 @@ idf_component_register(
         zeit.c
         main.cpp
         serial.c
+        display.cpp
 
                 #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/src/LoRa.cpp"
                 #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/examples/LoRaDuplex/LoRaDuplex.cpp"
-                #                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src/OLEDDisplay.cpp"
+                                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src/OLEDDisplay.cpp"
                 #                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src/OLEDDisplayUi.cpp"
 #                "C:/ESP/LIB/ERROPiX/ESP32_AnalogWrite/src/analogWrite.cpp"
 
@@ -27,10 +28,10 @@ idf_component_register(
 
         INCLUDE_DIRS
                 "C:/ESP/arduino-esp32/variants/heltec_wifi_lora_32_V2"
-
+                "C:/ESP/LIB/ArduinoJson/ArduinoJson/src"
 
 #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/src"
-#                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src"
+                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src"
 #                "C:/ESP/LIB/ERROPiX/ESP32_AnalogWrite/src"
 #                "C:/ESP/heltec/WiFi_Kit_series/esp32/variants/wifi_lora_32_V2"
 #
