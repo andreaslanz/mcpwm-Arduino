@@ -7,9 +7,9 @@ idf_component_register(
         #SRC_DIRS
 
         SRCS
+        main.cpp
         web.cpp
         zeit.c
-        main.cpp
         serial.c
         display.cpp
 
@@ -29,6 +29,7 @@ idf_component_register(
         INCLUDE_DIRS
                 "C:/ESP/arduino-esp32/variants/heltec_wifi_lora_32_V2"
                 "C:/ESP/LIB/ArduinoJson/ArduinoJson/src"
+
 
 #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/src"
                 "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src"
@@ -52,6 +53,7 @@ endif()
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-unused-variable -Wno-missing-field-initializers -Wno-unused-function -Wno-unused-but-set-variable -DESP32
         -DARDUINO # wichtig für OLED Lib.
         -DARDUINO_ARCH_ESP32 # wichtig für OLED Lib.
+        -DARDUINO=10812
         )
 
 # "C:/ESP/heltec/Heltec_ESP32/src/heltec.cpp"

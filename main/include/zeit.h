@@ -114,7 +114,7 @@ typedef struct {
     dr_Zeiten_t Zeiten;
 }dr_Dragrace_t;
 
-
+extern dr_Dragrace_t Dragrace;
 extern uint32_t Zahl;
 
 

@@ -1,7 +1,7 @@
-#ifndef main_dragrace_H
-#define main_dragrace_H
+#ifndef MAINDRAGRACE
+#define MAINDRAGRACE
 
-#include "Arduino.h"
+//#include "Arduino.h"
 
 
 extern uint32_t zeit;
@@ -19,12 +19,13 @@ void Serial_Start();
 }
 #endif
 
-
-
-
-
-
-
-
-
 #endif
+
+
+
+
+
+
+
+
+

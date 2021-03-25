@@ -14,7 +14,7 @@ Dragrace*/
 
 #include "Arduino.h"
 
-#define WEBSERVER 0
+#define WEBSERVER 1
 #define OLED_DISPLAY 1
 
 xQueueHandle cap_queue;
