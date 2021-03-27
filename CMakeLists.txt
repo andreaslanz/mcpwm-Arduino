@@ -26,7 +26,7 @@ add_compile_definitions(
         )
 # Pfad zu arduino-esp23 (idf-release/4.0)
 list(APPEND EXTRA_COMPONENT_DIRS "C:/ESP/arduino-esp32")
-#set(COMPONENTS "arduino-esp32")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+
 project(mcpwm-arduino)

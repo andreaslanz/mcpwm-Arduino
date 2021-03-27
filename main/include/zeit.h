@@ -137,6 +137,7 @@ static void disp_captured_signal(void *arg);
 static void mcpwm_example_config(void *arg);
 void mcpwm_setup();
 void start();
+void neu();
 void L1();
 void L2();
 void L3();

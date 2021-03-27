@@ -98,6 +98,12 @@ _Noreturn static void gpio_test_signal(void *arg)
     }
 }
 
+void dragrace_show(){
+    ESP_LOGI(TAG,"Status: L1 %d L2 %d L3 %d",Dragrace.Status.LinkeBahn.Lichschr1,Dragrace.Status.LinkeBahn.Lichschr2,Dragrace.Status.LinkeBahn.Lichschr3);
+    ESP_LOGI(TAG,"Status:  Ready:%d Gestartet:%d Läuft:%d Fertig:%d ",Dragrace.Status.Ready,Dragrace.Status.Gestartet,Dragrace.Status.Laeuft,Dragrace.Status.Fertig);
+    ESP_LOGI(TAG,"Zeiten: Start:%d L1:%d L2:%d l3:%d  ",Dragrace.Zeiten.Time_Start,Dragrace.Zeiten.Links.Lichtschr1,Dragrace.Zeiten.Links.Lichtschr2,Dragrace.Zeiten.Links.Lichtschr3);
+}
+
 /**
  * @brief When interrupt occurs, we receive the counter value and display the time between two rising edge
  */
@@ -115,11 +121,20 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
         // 1. Lichtschranke (Start)
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP0) {
 
-            Dragrace.Status.LinkeBahn.Lichschr1 = DURCHFAHREN;
-            Dragrace.Zeiten.Links.Lichtschr1= evt.capture_signal;
-            Dragrace.Status.LinkeBahn.Fruehstart=1;
+            if(Dragrace.Status.Laeuft){
 
-            ESP_LOGD(TAG, "val:%d\n", current_cap_value[0]);
+                Dragrace.Status.LinkeBahn.Lichschr1 = DURCHFAHREN;
+
+                Dragrace.Zeiten.Links.Lichtschr1= evt.capture_signal;
+
+                if(Dragrace.Zeiten.Links.Lichtschr1<Dragrace.Zeiten.Time_Start)
+
+                    Dragrace.Status.LinkeBahn.Fruehstart=1;
+
+            }
+
+
+            ESP_LOGD(TAG, "val:%d", Dragrace.Zeiten.Links.Lichtschr1);
             Zahl = current_cap_value[0];
             /*current_cap_value[0] = evt.capture_signal - previous_cap_value[0];
             previous_cap_value[0] = evt.capture_signal;
@@ -142,7 +157,8 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
 
                 //Fehlstart?
                 if(Dragrace.Status.LinkeBahn.Lichschr1 == DURCHFAHREN){
-                    Dragrace.Status.LinkeBahn.Fruehstart=true;
+                    if(Dragrace.Zeiten.Links.Lichtschr1 < Dragrace.Zeiten.Time_Start)
+                        Dragrace.Status.LinkeBahn.Fruehstart=true;
                 }
             }
 
@@ -150,7 +166,10 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
             if(Dragrace.Status.Laeuft==true){
                 Dragrace.Zeiten.Links.Lichtschr3=evt.capture_signal;
                 Dragrace.Status.LinkeBahn.Lichschr3=DURCHFAHREN;
+
             }
+
+            dragrace_show();
 
 
 
@@ -167,20 +186,23 @@ static void IRAM_ATTR isr_handler()
     uint32_t mcpwm_intr_status;
     BaseType_t xHigherPriorityTaskWoken;
     capture evt;
+    uint32_t status;
 
     xHigherPriorityTaskWoken = pdFALSE;
     interupt_count++;
 
     /**Read interrupt status*/
     mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val;
-    ESP_EARLY_LOGD(TAG,"sta %d\n",mcpwm_intr_status);  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
+    status=mcpwm_intr_status &(CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN);
+    status=status>>27;
+    ESP_EARLY_LOGD(TAG,"sta %d",status );  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
 
     /**Check for interrupt on rising edge on CAP0 signal original*/
     if (mcpwm_intr_status & CAP0_INT_EN) {
         evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_SELECT_CAP0;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        ESP_EARLY_LOGD(TAG,"CAP0\n");
+        ESP_EARLY_LOGD(TAG,"CAP0");
     }
 
     /**Check for interrupt on rising edge on CAP1 signal original*/
@@ -188,7 +210,7 @@ static void IRAM_ATTR isr_handler()
         evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP1]; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_SELECT_CAP1;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        ESP_EARLY_LOGD(TAG,"CAP1\n");
+        ESP_EARLY_LOGD(TAG,"CAP1");
     }
 
     /**Check for interrupt on rising edge on CAP2 signal original*/
@@ -196,7 +218,7 @@ static void IRAM_ATTR isr_handler()
         evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP2]; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_SELECT_CAP2;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        ESP_EARLY_LOGD(TAG,"CAP2\n");
+        ESP_EARLY_LOGD(TAG,"CAP2");
     }
 
     /**Clear Interuppt*/
@@ -220,8 +242,8 @@ static void mcpwm_example_config(void *arg)
 #if MCPWM_EN_CAPTURE
     //7. Capture configuration
     mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-//    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-//    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     //enable interrupt, so each this a rising edge occurs interrupt is triggered
     MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
     mcpwm_isr_register(MCPWM_UNIT_0, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
@@ -229,14 +251,30 @@ static void mcpwm_example_config(void *arg)
     vTaskDelete(NULL);
 }
 /**Software Interrupts für Test*/
+void neu(){
+    Dragrace.Status.val=0;
+    Dragrace.Status.Ready=1;
+    Dragrace.Status.LinkeBahn.val=0;
+    Dragrace.Status.RechteBahn.val=0;
+    
+
+}
 void start(){
+    Dragrace.Status.Gestartet=true;
     soft_cap_intr.mcpwm0.cap0_sw=1;
-    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[0].sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[2].sw=1;
 }
 void L1(){
+    soft_cap_intr.mcpwm0.cap0_sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[MCPWM_SELECT_CAP0].sw=1;
+}
+void L2(){
     soft_cap_intr.mcpwm0.cap1_sw=1;
-
-    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[1].sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[MCPWM_SELECT_CAP1].sw=1;
+}
+void L3(){
+    soft_cap_intr.mcpwm0.cap2_sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[MCPWM_SELECT_CAP2].sw=1;
 }
  void mcpwm_setup()
 {

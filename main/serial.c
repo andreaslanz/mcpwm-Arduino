@@ -26,15 +26,28 @@ _Noreturn static void uart_event_task(void *pvParameters)
             switch(event.type) {
                 case UART_DATA:
                     while(uart_read_bytes(EX_UART_NUM, (uint8_t *) &c, 1, portMAX_DELAY)){
+                        if(c=='n'){
+                            ESP_LOGI(TAG, "Neu");
+                            neu();
+                        }
                         if(c=='s'){
-                            printf("Start\n");
+                            ESP_LOGI(TAG, "Start");
                             start();
                         }
                         if(c=='1'){
-                            printf("L1\n");
+                            ESP_LOGI(TAG, "L1");
                             L1();
                         }
-                        uart_write_bytes(EX_UART_NUM, (const char*) &c, 1);
+                        if(c=='2'){
+                            ESP_LOGI(TAG, "L2");
+                            L2();
+                        }
+                        if(c=='3'){
+                            ESP_LOGI(TAG, "L3");
+                            L3();
+                        }
+                        // Write
+//                        uart_write_bytes(EX_UART_NUM, (const char*) &c, 1);
                     }
                     break;
                 default:
