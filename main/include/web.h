@@ -5,14 +5,18 @@ extern "C" {
 #endif
 
 
-//#include <WebServer.h>
-
-
-//extern WebServer server;
-
+//Webserver1 (Arduino-Lib)
 void Webserver_Setup(void);
 void Webserver_loop(void);
 static void drawGraph();
+
+
+//Webserver2 (idf)
+void dragrace_webserver();
+
+
+
+
 
 #ifdef __cplusplus
 }

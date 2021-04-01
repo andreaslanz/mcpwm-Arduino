@@ -5,6 +5,7 @@ Dragrace*/
 #include <HardwareSerial.h>
 #include "include/main.h"
 #include "include/zeit.h"
+#include "include/utility.h"
 #include "include/display.h"
 #include "include/web.h"
 #include "freertos/FreeRTOS.h"
@@ -15,17 +16,17 @@ Dragrace*/
 #include "Arduino.h"
 
 #define WEBSERVER 0
+#define WEBSERVER2 1
 #define OLED_DISPLAY 0
 
 xQueueHandle cap_queue;
 
+//Webservertask
 [[noreturn]] static void Web_Task(void *arg){
-
     while(1){
 #if WEBSERVER
         Webserver_loop();
 #endif
-
     }
 }
 
@@ -33,6 +34,12 @@ xQueueHandle cap_queue;
 
 void setup()
 {
+    // Test Set Pins as Output
+    //dragrace_set_Test_Pin_as_Output(BIT(DRAGRACE_PIN_TEST_L1_OUTPUT));
+
+    //Start Webserver
+    dragrace_webserver();
+
 
     Serial_Start();
 

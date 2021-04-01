@@ -7,13 +7,14 @@
 #include "include/zeit.h"
 #include "include/display.h"
 
+
 xQueueHandle cap_queue;
 #if MCPWM_EN_CAPTURE
 static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1};
 #endif
 
 uint32_t Zahl;
-dr_Dragrace_t Dragrace;
+dr_Dragrace_t dragrace;
 
 cap_source_sw_t soft_cap_intr;
 
@@ -25,6 +26,7 @@ static volatile IRAM_ATTR int interupt_count=0;
 volatile uint32_t  Drag_mcpwm_intr_status;
 volatile uint32_t  Drag_mcpwm_intr_clr;
 static volatile uint32_t  time;
+//extern void inline ets_delay_us(uint32_t t);
 
 static void mcpwm_example_gpio_initialize()
 {
@@ -38,7 +40,7 @@ static void mcpwm_example_gpio_initialize()
 //    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM2B, GPIO_PWM2B_OUT);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, GPIO_CAP0_IN);
 //    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, GPIO_CAP1_IN);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, GPIO_CAP2_IN);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, GPIO_CAP2_IN);
 //    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_SYNC_0, GPIO_SYNC0_IN);
 //    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_SYNC_1, GPIO_SYNC1_IN);
 //    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_SYNC_2, GPIO_SYNC2_IN);
@@ -67,7 +69,7 @@ static void mcpwm_example_gpio_initialize()
 #endif
     gpio_pulldown_en(GPIO_CAP0_IN);    //Enable pull down on CAP0   signal
 //    gpio_pulldown_en(GPIO_CAP1_IN);    //Enable pull down on CAP1   signal
-//    gpio_pulldown_en(GPIO_CAP2_IN);    //Enable pull down on CAP2   signal
+    gpio_pulldown_en(GPIO_CAP2_IN);    //Enable pull down on CAP2   signal
 //    gpio_pulldown_en(GPIO_SYNC0_IN);   //Enable pull down on SYNC0  signal
 //    gpio_pulldown_en(GPIO_SYNC1_IN);   //Enable pull down on SYNC1  signal
 //    gpio_pulldown_en(GPIO_SYNC2_IN);   //Enable pull down on SYNC2  signal
@@ -99,9 +101,9 @@ _Noreturn static void gpio_test_signal(void *arg)
 }
 
 void dragrace_show(){
-    ESP_LOGI(TAG,"Status: L1 %d L2 %d L3 %d",Dragrace.Status.LinkeBahn.Lichschr1,Dragrace.Status.LinkeBahn.Lichschr2,Dragrace.Status.LinkeBahn.Lichschr3);
-    ESP_LOGI(TAG,"Status:  Ready:%d Gestartet:%d Läuft:%d Fertig:%d ",Dragrace.Status.Ready,Dragrace.Status.Gestartet,Dragrace.Status.Laeuft,Dragrace.Status.Fertig);
-    ESP_LOGI(TAG,"Zeiten: Start:%d L1:%d L2:%d l3:%d  ",Dragrace.Zeiten.Time_Start,Dragrace.Zeiten.Links.Lichtschr1,Dragrace.Zeiten.Links.Lichtschr2,Dragrace.Zeiten.Links.Lichtschr3);
+    ESP_LOGI(TAG, "Status: L1:%d L2:%d L3:%d Frühstart-Links:%d", dragrace.Status.LinkeBahn.Lichschr1, dragrace.Status.LinkeBahn.Lichschr2, dragrace.Status.LinkeBahn.Lichschr3,dragrace.Status.LinkeBahn.Fruehstart);
+    ESP_LOGI(TAG, "Status:  Ready:%d Gestartet:%d Läuft:%d Fertig:%d ", dragrace.Status.Ready, dragrace.Status.Gestartet, dragrace.Status.Laeuft, dragrace.Status.Fertig);
+    ESP_LOGI(TAG, "Zeiten: Start:%u L1:%u L2:%u l3:%u  ", dragrace.Zeiten.Time_Start, dragrace.Zeiten.Links.Lichtschr1, dragrace.Zeiten.Links.Lichtschr2, dragrace.Zeiten.Links.Lichtschr3);
 }
 
 /**
@@ -121,20 +123,23 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
         // 1. Lichtschranke (Start)
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP0) {
 
-            if(Dragrace.Status.Laeuft){
+            if(dragrace.Status.Gestartet || dragrace.Status.Laeuft || dragrace.Status.Ready){
 
-                Dragrace.Status.LinkeBahn.Lichschr1 = DURCHFAHREN;
 
-                Dragrace.Zeiten.Links.Lichtschr1= evt.capture_signal;
+                dragrace.Status.LinkeBahn.Lichschr1 = DURCHFAHREN;
 
-                if(Dragrace.Zeiten.Links.Lichtschr1<Dragrace.Zeiten.Time_Start)
+                dragrace.Zeiten.Links.Lichtschr1= evt.capture_signal;
 
-                    Dragrace.Status.LinkeBahn.Fruehstart=1;
+                ESP_LOGD(TAG, "val:%d", dragrace.Zeiten.Links.Lichtschr1);
+
+
+                if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Time_Start || dragrace.Zeiten.Time_Start==0)
+
+                    dragrace.Status.LinkeBahn.Fruehstart=1;
 
             }
 
 
-            ESP_LOGD(TAG, "val:%d", Dragrace.Zeiten.Links.Lichtschr1);
             Zahl = current_cap_value[0];
             /*current_cap_value[0] = evt.capture_signal - previous_cap_value[0];
             previous_cap_value[0] = evt.capture_signal;
@@ -149,31 +154,32 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP2) {
 
             // Start Signal (Software Interrupt)
-            if(Dragrace.Status.Gestartet==true){
-                Dragrace.Status.Gestartet=false;
-                Dragrace.Status.Laeuft=true;
-                Dragrace.Zeiten.Time_Start= evt.capture_signal;
-                Dragrace.Status.Ready=false;
+            if(dragrace.Status.Laeuft == false && dragrace.Status.Gestartet==true){
+                dragrace.Status.Gestartet=false;
+                dragrace.Status.Laeuft=true;
+                dragrace.Zeiten.Time_Start= evt.capture_signal;
+                dragrace.Status.Ready=false;
 
                 //Fehlstart?
-                if(Dragrace.Status.LinkeBahn.Lichschr1 == DURCHFAHREN){
-                    if(Dragrace.Zeiten.Links.Lichtschr1 < Dragrace.Zeiten.Time_Start)
-                        Dragrace.Status.LinkeBahn.Fruehstart=true;
+                if(dragrace.Status.LinkeBahn.Lichschr1 == DURCHFAHREN){
+                    if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Time_Start)
+                        dragrace.Status.LinkeBahn.Fruehstart=true;
                 }
             }
 
             // Lichtschranke 3
-            if(Dragrace.Status.Laeuft==true){
-                Dragrace.Zeiten.Links.Lichtschr3=evt.capture_signal;
-                Dragrace.Status.LinkeBahn.Lichschr3=DURCHFAHREN;
+            if(dragrace.Status.Laeuft == true && dragrace.Status.Gestartet==false){
+                dragrace.Zeiten.Links.Lichtschr3=evt.capture_signal;
+                dragrace.Status.LinkeBahn.Lichschr3=DURCHFAHREN;
 
             }
 
-            dragrace_show();
 
 
 
         }
+
+        dragrace_show();
     }
 }
 
@@ -181,21 +187,39 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
 /**
  * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP0 signal and according take action
  */
+ int first=1;
 static void IRAM_ATTR isr_handler()
 {
     uint32_t mcpwm_intr_status;
     BaseType_t xHigherPriorityTaskWoken;
     capture evt;
     uint32_t status;
+    uint32_t pins;
 
     xHigherPriorityTaskWoken = pdFALSE;
     interupt_count++;
+
 
     /**Read interrupt status*/
     mcpwm_intr_status = MCPWM[MCPWM_UNIT_0]->int_st.val;
     status=mcpwm_intr_status &(CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN);
     status=status>>27;
-    ESP_EARLY_LOGD(TAG,"sta %d",status );  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
+    ESP_EARLY_LOGD(TAG,"sta %d ct:%d",status,interupt_count );  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
+
+
+
+    /**Test Interrupt während Interrupt auslösen*/
+    if(first){
+        first=0;
+        pins=(BIT(DRAGRACE_PIN_TEST_L1_OUTPUT));
+        *(uint32_t *)GPIO_OUT_W1TC_REG=pins; //Low
+        ets_delay_us(10);
+        *(uint32_t *)GPIO_OUT_W1TS_REG=pins; //High
+        ets_delay_us(10);
+        *(uint32_t *)GPIO_OUT_W1TC_REG=pins; //Low
+
+    }
+
 
     /**Check for interrupt on rising edge on CAP0 signal original*/
     if (mcpwm_intr_status & CAP0_INT_EN) {
@@ -252,17 +276,19 @@ static void mcpwm_example_config(void *arg)
 }
 /**Software Interrupts für Test*/
 void neu(){
-    Dragrace.Status.val=0;
-    Dragrace.Status.Ready=1;
-    Dragrace.Status.LinkeBahn.val=0;
-    Dragrace.Status.RechteBahn.val=0;
-    
-
+    dragrace.Status.val=0;
+    dragrace.Status.Ready=1;
+    dragrace.Status.LinkeBahn.val=0;
+    dragrace.Status.RechteBahn.val=0;
+    dragrace.Zeiten.Links.Lichtschr1=0;
+    dragrace.Zeiten.Links.Lichtschr2=0;
+    dragrace.Zeiten.Links.Lichtschr3=0;
+    dragrace.Zeiten.Time_Start=0;
 }
 void start(){
-    Dragrace.Status.Gestartet=true;
-    soft_cap_intr.mcpwm0.cap0_sw=1;
+    dragrace.Status.Gestartet=true;
     MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[2].sw=1;
+    soft_cap_intr.mcpwm0.cap0_sw=1;
 }
 void L1(){
     soft_cap_intr.mcpwm0.cap0_sw=1;

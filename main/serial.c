@@ -7,6 +7,7 @@
 #include "esp_log.h"
 
 #include "include/zeit.h"
+#include "include/utility.h"
 
 static const char *TAG = "uart_events";
 
@@ -45,6 +46,10 @@ _Noreturn static void uart_event_task(void *pvParameters)
                         if(c=='3'){
                             ESP_LOGI(TAG, "L3");
                             L3();
+                        }
+                        if(c=='p'){
+                            ESP_LOGI(TAG, "Pulse");
+                            dragrace_impulse();
                         }
                         // Write
 //                        uart_write_bytes(EX_UART_NUM, (const char*) &c, 1);

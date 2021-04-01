@@ -13,6 +13,7 @@ extern "C" {
 #include "soc/rtc.h"
 #include "driver/mcpwm.h"
 #include "soc/mcpwm_periph.h"
+#include "pin_def.h"
 
 #define MCPWM_EN_CAPTURE 1   //Make this 1 to test capture submodule of mcpwm, measure time between rising/falling edge of captured signal
 #define MCPWM_GPIO_INIT 1    //select which function to use to initialize gpio signals
@@ -23,9 +24,9 @@ extern "C" {
 #define CAP2_INT_EN BIT(29)  //Capture 2 interrupt bit
 
 
-#define GPIO_CAP0_IN   23   //Set GPIO 23 as  CAP0
-#define GPIO_CAP1_IN   25   //Set GPIO 25 as  CAP1
-#define GPIO_CAP2_IN   26   //Set GPIO 26 as  CAP2
+#define GPIO_CAP0_IN   DRAGRACE_PIN_LICHTSCHRANKE_L1_INPUT   //Set GPIO 23 as  CAP0
+#define GPIO_CAP1_IN   DRAGRACE_PIN_LICHTSCHRANKE_L2_INPUT   //Set GPIO 19 as  CAP1
+#define GPIO_CAP2_IN   DRAGRACE_PIN_LICHTSCHRANKE_L3_INPUT   //Set GPIO 22 as  CAP2
 
 //SW interrupt
 typedef union  {
@@ -114,7 +115,7 @@ typedef struct {
     dr_Zeiten_t Zeiten;
 }dr_Dragrace_t;
 
-extern dr_Dragrace_t Dragrace;
+extern dr_Dragrace_t dragrace;
 extern uint32_t Zahl;
 
 

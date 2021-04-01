@@ -25,7 +25,7 @@ add_compile_definitions(
         #CONFIG_AUTOSTART_ARDUINO
         )
 # Pfad zu arduino-esp23 (idf-release/4.0)
-list(APPEND EXTRA_COMPONENT_DIRS "C:/ESP/arduino-esp32")
+list(APPEND EXTRA_COMPONENT_DIRS "C:/ESP/arduino-esp32" "C:/ESP/esp-idf/examples/common_components")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
