@@ -113,6 +113,7 @@ extern dr_Zeiten_t Zeiten;
 typedef struct {
     dr_Status_t Status;
     dr_Zeiten_t Zeiten;
+    char dragrace_Json_String[500];
 }dr_Dragrace_t;
 
 extern dr_Dragrace_t dragrace;
@@ -137,7 +138,7 @@ static void gpio_test_signal(void *arg);
 static void disp_captured_signal(void *arg);
 static void mcpwm_example_config(void *arg);
 void mcpwm_setup();
-void start();
+void drag_start();
 void neu();
 void L1();
 void L2();

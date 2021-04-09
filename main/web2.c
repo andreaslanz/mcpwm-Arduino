@@ -12,6 +12,9 @@
 
 #include <esp_wifi.h>
 #include <esp_event.h>
+//#define  LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define  LOG_LOCAL_LEVEL ESP_LOG_INFO
+
 #include <esp_log.h>
 #include <esp_system.h>
 #include <nvs_flash.h>
@@ -20,8 +23,8 @@
 #include "tcpip_adapter.h"
 #include "esp_eth.h"
 #include "protocol_examples_common.h"
-
 #include <esp_http_server.h>
+#include "include/zeit.h"
 
 /* A simple example that demonstrates how to create GET and POST
  * handlers for the web server.
@@ -29,7 +32,90 @@
 
 static const char *TAG = "example";
 
-/* An HTTP GET handler */
+void setCrossOrigin(httpd_req_t *req){
+
+    httpd_resp_set_hdr(req,"Access-Control-Allow-Origin","*");
+    httpd_resp_set_hdr(req,"Access-Control-Max-Age","600");
+    httpd_resp_set_hdr(req,"Access-Control-Allow-Methods","PUT,POST,GET,OPTIONS");
+    httpd_resp_set_hdr(req,"Access-Control-Allow-Headers","*");
+}
+
+/*********************************
+ *   URL:    /zahl
+ *
+ *   (Daten Senden)
+ **********************************/
+static esp_err_t zahl_handler(httpd_req_t *req)
+{
+    setCrossOrigin(req);
+
+    httpd_resp_set_type(req,"application/json");
+    httpd_resp_send(req, dragrace.dragrace_Json_String, strlen(dragrace.dragrace_Json_String));
+
+    return ESP_OK;
+}
+
+static const httpd_uri_t zahl = {
+        .uri       = "/zahl",
+        .method    = HTTP_GET,
+        .handler   = zahl_handler,
+        /* Let's pass response string in user
+         * context to demonstrate it's usage */
+        .user_ctx  = NULL
+};
+
+/*********************************
+ *   URL:    /start
+ *
+ *   (Rennen starten)
+ **********************************/
+static esp_err_t start_handler(httpd_req_t *req){
+
+    char*  buf;
+    size_t buf_len;
+
+    setCrossOrigin(req);
+
+    /**URL-Parameter*/
+    buf_len = httpd_req_get_url_query_len(req) + 1;
+    if (buf_len > 1) {
+        buf = malloc(buf_len);
+        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+            ESP_LOGI(TAG, "Found URL query => %s", buf);
+            char param[32];
+            /** action */
+            if (httpd_query_key_value(buf, "action", param, sizeof(param)) == ESP_OK) {
+                ESP_LOGI(TAG, "Found URL query parameter => query1=%s", param);
+                /** start*/
+                if(!strcmp(param,"start")){
+                    ESP_LOGI(TAG, "Rennen gestartet");
+                    drag_start(); // Rennen starten
+                }
+                /** neu*/
+                if(!strcmp(param,"neu")){
+                    ESP_LOGI(TAG, "Rennen gestartet");
+                    neu(); // neues Rennen
+                }
+
+            }
+        }
+        free(buf);
+    }
+
+
+    httpd_resp_send(req, req->user_ctx, strlen(req->user_ctx));
+
+    return ESP_OK;
+}
+static const httpd_uri_t url_start = {
+        .uri       = "/start",
+        .method    = HTTP_GET,
+        .handler   = start_handler,
+        /* Let's pass response string in user
+         * context to demonstrate it's usage */
+        .user_ctx  = "Rennen gestartet"
+};
+/** An HTTP GET handler */
 static esp_err_t hello_get_handler(httpd_req_t *req)
 {
     char*  buf;
@@ -90,10 +176,14 @@ static esp_err_t hello_get_handler(httpd_req_t *req)
     /* Set some custom headers */
     httpd_resp_set_hdr(req, "Custom-Header-1", "Custom-Value-1");
     httpd_resp_set_hdr(req, "Custom-Header-2", "Custom-Value-2");
+    //a.l.
+    setCrossOrigin(req);
 
     /* Send response with custom headers and body set as the
      * string passed in user context*/
     const char* resp_str = (const char*) req->user_ctx;
+    //a.l.
+    httpd_resp_set_type(req,"motherfucker");
     httpd_resp_send(req, resp_str, strlen(resp_str));
 
     /* After sending the HTTP response the old HTTP request
@@ -113,7 +203,7 @@ static const httpd_uri_t hello = {
         .user_ctx  = "Hello World!"
 };
 
-/* An HTTP POST handler */
+/** An HTTP POST handler */
 static esp_err_t echo_post_handler(httpd_req_t *req)
 {
     char buf[100];
@@ -232,6 +322,8 @@ static httpd_handle_t start_webserver(void)
     if (httpd_start(&server, &config) == ESP_OK) {
         // Set URI handlers
         ESP_LOGI(TAG, "Registering URI handlers");
+        httpd_register_uri_handler(server, &zahl);
+        httpd_register_uri_handler(server, &url_start);
         httpd_register_uri_handler(server, &hello);
         httpd_register_uri_handler(server, &echo);
         httpd_register_uri_handler(server, &ctrl);
@@ -268,7 +360,6 @@ static void connect_handler(void* arg, esp_event_base_t event_base,
         *server = start_webserver();
     }
 }
-
 
 void dragrace_webserver()
 {

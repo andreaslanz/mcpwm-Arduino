@@ -33,7 +33,7 @@ _Noreturn static void uart_event_task(void *pvParameters)
                         }
                         if(c=='s'){
                             ESP_LOGI(TAG, "Start");
-                            start();
+                            drag_start();
                         }
                         if(c=='1'){
                             ESP_LOGI(TAG, "L1");

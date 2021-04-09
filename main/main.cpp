@@ -37,8 +37,10 @@ void setup()
     // Test Set Pins as Output
     //dragrace_set_Test_Pin_as_Output(BIT(DRAGRACE_PIN_TEST_L1_OUTPUT));
 
+#if WEBSERVER2
     //Start Webserver
     dragrace_webserver();
+#endif
 
 
     Serial_Start();

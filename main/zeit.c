@@ -6,7 +6,7 @@
 #include <esp_log.h>
 #include "include/zeit.h"
 #include "include/display.h"
-
+#include <cJSON.h>
 
 xQueueHandle cap_queue;
 #if MCPWM_EN_CAPTURE
@@ -20,13 +20,31 @@ cap_source_sw_t soft_cap_intr;
 
 static const char *TAG = "zeit.c";
 
-
 //DEBUGG
 static volatile IRAM_ATTR int interupt_count=0;
 volatile uint32_t  Drag_mcpwm_intr_status;
 volatile uint32_t  Drag_mcpwm_intr_clr;
 static volatile uint32_t  time;
 //extern void inline ets_delay_us(uint32_t t);
+
+/** Convert to json*/
+void convert_to_json() {
+    cJSON *root = NULL;
+    char *out = NULL;
+    root =cJSON_CreateObject();
+    cJSON_AddNumberToObject(root,"Status",dragrace.Status.val);
+    cJSON_AddNumberToObject(root,"Status_Links",dragrace.Status.LinkeBahn.val);
+    cJSON_AddNumberToObject(root,"Start",dragrace.Zeiten.Time_Start);
+    cJSON_AddNumberToObject(root,"Zeit_L1",dragrace.Zeiten.Links.Lichtschr1);
+    cJSON_AddNumberToObject(root,"Zeit_L2",dragrace.Zeiten.Links.Lichtschr2);
+    cJSON_AddNumberToObject(root,"Zeit_L3",dragrace.Zeiten.Links.Lichtschr3);
+    out = cJSON_Print(root);
+    strcpy(dragrace.dragrace_Json_String,out);
+    ESP_LOGD(TAG,"json:%s",out);
+    free(out);
+    cJSON_Delete(root);
+}
+
 
 static void mcpwm_example_gpio_initialize()
 {
@@ -103,7 +121,8 @@ _Noreturn static void gpio_test_signal(void *arg)
 void dragrace_show(){
     ESP_LOGI(TAG, "Status: L1:%d L2:%d L3:%d Frühstart-Links:%d", dragrace.Status.LinkeBahn.Lichschr1, dragrace.Status.LinkeBahn.Lichschr2, dragrace.Status.LinkeBahn.Lichschr3,dragrace.Status.LinkeBahn.Fruehstart);
     ESP_LOGI(TAG, "Status:  Ready:%d Gestartet:%d Läuft:%d Fertig:%d ", dragrace.Status.Ready, dragrace.Status.Gestartet, dragrace.Status.Laeuft, dragrace.Status.Fertig);
-    ESP_LOGI(TAG, "Zeiten: Start:%u L1:%u L2:%u l3:%u  ", dragrace.Zeiten.Time_Start, dragrace.Zeiten.Links.Lichtschr1, dragrace.Zeiten.Links.Lichtschr2, dragrace.Zeiten.Links.Lichtschr3);
+    ESP_LOGI(TAG, "Zeiten: Start:%u L1:%u L2:%u L3:%u  ", dragrace.Zeiten.Time_Start, dragrace.Zeiten.Links.Lichtschr1, dragrace.Zeiten.Links.Lichtschr2, dragrace.Zeiten.Links.Lichtschr3);
+    convert_to_json();
 }
 
 /**
@@ -139,6 +158,8 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
 
             }
 
+            // Disabel Interrupt
+//            mcpwm_capture_disable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0);  // Eingang sperren
 
             Zahl = current_cap_value[0];
             /*current_cap_value[0] = evt.capture_signal - previous_cap_value[0];
@@ -148,13 +169,20 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
 
         // 2. Lichtschranke (Geschwindikeitsmessung)
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP1) {
+            if(dragrace.Status.Laeuft == true && dragrace.Status.Gestartet==false){
+                dragrace.Zeiten.Links.Lichtschr2=evt.capture_signal;
+                dragrace.Status.LinkeBahn.Lichschr2=DURCHFAHREN;
+
+            }
+
         }
 
         //  3. Lichtschranke (Ziel) / zugleich Renn-Start(Soft-Interrupt)
         if (evt.sel_cap_signal == MCPWM_SELECT_CAP2) {
 
             // Start Signal (Software Interrupt)
-            if(dragrace.Status.Laeuft == false && dragrace.Status.Gestartet==true){
+//            if(dragrace.Status.Laeuft == false && dragrace.Status.Gestartet==true){
+            if(dragrace.Status.Ready){
                 dragrace.Status.Gestartet=false;
                 dragrace.Status.Laeuft=true;
                 dragrace.Zeiten.Time_Start= evt.capture_signal;
@@ -165,14 +193,17 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
                     if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Time_Start)
                         dragrace.Status.LinkeBahn.Fruehstart=true;
                 }
+            }else{
+
+                // Lichtschranke 3
+    //            if(dragrace.Status.Laeuft == true && dragrace.Status.Gestartet==false){
+                if(dragrace.Status.Laeuft == true ){
+                    dragrace.Zeiten.Links.Lichtschr3=evt.capture_signal;
+                    dragrace.Status.LinkeBahn.Lichschr3=DURCHFAHREN;
+
+                }
             }
 
-            // Lichtschranke 3
-            if(dragrace.Status.Laeuft == true && dragrace.Status.Gestartet==false){
-                dragrace.Zeiten.Links.Lichtschr3=evt.capture_signal;
-                dragrace.Status.LinkeBahn.Lichschr3=DURCHFAHREN;
-
-            }
 
 
 
@@ -188,6 +219,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
  * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP0 signal and according take action
  */
  int first=1;
+#define DRAGRACE_INTERRUPT_TEST 0
 static void IRAM_ATTR isr_handler()
 {
     uint32_t mcpwm_intr_status;
@@ -207,7 +239,7 @@ static void IRAM_ATTR isr_handler()
     ESP_EARLY_LOGD(TAG,"sta %d ct:%d",status,interupt_count );  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
 
 
-
+#if DRAGRACE_INTERRUPT_TEST
     /**Test Interrupt während Interrupt auslösen*/
     if(first){
         first=0;
@@ -217,9 +249,8 @@ static void IRAM_ATTR isr_handler()
         *(uint32_t *)GPIO_OUT_W1TS_REG=pins; //High
         ets_delay_us(10);
         *(uint32_t *)GPIO_OUT_W1TC_REG=pins; //Low
-
     }
-
+#endif
 
     /**Check for interrupt on rising edge on CAP0 signal original*/
     if (mcpwm_intr_status & CAP0_INT_EN) {
@@ -276,6 +307,10 @@ static void mcpwm_example_config(void *arg)
 }
 /**Software Interrupts für Test*/
 void neu(){
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+
     dragrace.Status.val=0;
     dragrace.Status.Ready=1;
     dragrace.Status.LinkeBahn.val=0;
@@ -284,9 +319,12 @@ void neu(){
     dragrace.Zeiten.Links.Lichtschr2=0;
     dragrace.Zeiten.Links.Lichtschr3=0;
     dragrace.Zeiten.Time_Start=0;
+    dragrace_show();
 }
-void start(){
-    dragrace.Status.Gestartet=true;
+void drag_start(){
+    if(!dragrace.Status.Laeuft){
+        dragrace.Status.Gestartet=true;
+    }
     MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[2].sw=1;
     soft_cap_intr.mcpwm0.cap0_sw=1;
 }
@@ -309,5 +347,8 @@ void L3(){
     xTaskCreate(disp_captured_signal, "mcpwm_config", 4096, NULL, 5, NULL);  //comment if you don't want to use capture module
 //    xTaskCreate(gpio_test_signal, "gpio_test_signal", 4096, NULL, 5, NULL); //comment if you don't want to use capture module
     xTaskCreate(mcpwm_example_config, "mcpwm_example_config", 4096, NULL, 5, NULL);
+
+    //neues Rennen
+    neu();
 }
 
