@@ -17,44 +17,82 @@
             crossorigin="anonymous"></script>
 
     <title>Dragrace</title>
-<!-----------------------------
 
-   Programme für Dragrace
-
-------------------------------->
     <script>
+
+   /**
+    *
+    *Programme für Dragrace
+    *
+    *
+    **/
+
+        var t_l1,t_l2,t_l3;
         //Json Status String von ESP32 lesen
         function d_json(){
             $.getJSON( "http://192.168.1.106/zahl"/*, function (d){$('#L1').text(d.Zeit-L2);}*/)
                 .done(function( json ) {
                     $('#zahl').text(JSON.stringify(json));
-                    $('#L1').text(json.Zeit_L1);
-                    $('#stat :button').removeClass("btn-success");
+                    $(':button').removeClass("btn-success");
+                    // $('#stat :button').removeClass("btn-success");
                     $('#start').unbind();
 
                     if(json.Status & (1)){ //Gestartet
+                    // if(json.Status & (1)){ //Gestartet
                         $('#bt_state_startet').addClass("btn-success");
                     }
                     if(json.Status & (1<<1)){ //Läuft
                         $('#bt_state_runing').addClass("btn-success");
                         $('#start').click(function (){
-                            $('#start').unbind();$.get("http://192.168.1.106/start?action=neu");
+                            $('#start').unbind();
+                            $.get("http://192.168.1.106/start?action=neu");
+                            t_l1=0;t_l3=0;t_l3=0;
+
                         });
-                            $('#start').removeClass('btn-primary btn-success');$('#start').addClass('btn-danger');
+                        $('#start').removeClass('btn-primary btn-success');
+                        $('#start').addClass('btn-danger');
                         $('#start').html('Stop');
 
                     }
                     if(json.Status & (1<<2)){ //Ready
                         $('#bt_state_ready').addClass("btn-success");
                         $('#start').click(function (){
-                            $('#start').unbind();$.get("http://192.168.1.106/start?action=start");
+                            $('#start').unbind();
+                            $.get("http://192.168.1.106/start?action=start");
                         });
-                            $('#start').removeClass('btn-primary btn-danger');$('#start').addClass('btn-success');
+                            $('#start').removeClass('btn-primary btn-danger');
+                            $('#start').addClass('btn-success');
                         $('#start').html('Start');
                     }
                     if(json.Status & (1<<3)){//Fertig
                         $('#bt_state_finsish').addClass("btn-success");
                     }
+
+                    if(json.Status & (1<<8)){//L1
+                        $('#bt_state_L1').addClass("btn-success");
+                        t_l1=json.Zeit_L1
+                        $('#L1').text((json.Zeit_L1-json.Start)/80000000);
+                    }
+                    if(json.Status & (1<<9)){//L2
+                        $('#bt_state_L2').addClass("btn-success");
+                        t_l2=(json.Zeit_L2-json.Start)/80000000;
+                    }
+                    if(json.Status & (1<<10)){//L3
+                        $('#bt_state_L3').addClass("btn-success");
+                        t_l3=(json.Zeit_L3-json.Start)/80000000
+                        $('#L3').text(t_l3);
+                        $('#L2').text((t_l3-t_l2)*100/3600);
+                    }
+                    if(json.Status & (1<<11)){//Frühstart Links
+                        $('#bt_state_lFuehstart').addClass("btn-success");
+                    }
+                    if(json.Status & (1<<12)){//Sieg Links
+                        $('#bt_state_LSieg').addClass("btn-success");
+                    }
+
+                    //zeiten
+                    $('#L1').text((json.Zeit_L1-json.Start)/80000000);
+
 
 
 
@@ -65,7 +103,9 @@
                 })
             ;
         }
-        /*Dokument geladen*/
+        /**
+        Dokument geladen
+         */
         $(document).ready(function () {
             var refreshInterval = '';
 
@@ -102,24 +142,16 @@
                     clearInterval(refreshInterval);
                     $("#refresh").show();
                 }
-
             });
 
-            // Refresh Knopf
-            $("#auto-refresh").click(function () {
-                if(refreshInterval){
-                    // Refresh off
-                    clearInterval(refreshInterval);
-                    $('#auto-refresh').html('Start auto Refresh');
-                    refreshInterval='';
-                }else {
-                    // Refresh on
-                    refreshInterval=setInterval(function(){
-                        d_json();
-                        $('#auto-refresh').html('Stop auto Refresh');
-                    },500);
-                }
-            });
+            // Simulator
+            $('#bt_sim_L1').click(function (){$.get("http://192.168.1.106/start?action=L1");})
+            $('#bt_sim_L2').click(function (){$.get("http://192.168.1.106/start?action=L2");})
+            $('#bt_sim_L3').click(function (){$.get("http://192.168.1.106/start?action=L3");})
+            $('#bt_sim_R1').click(function (){$.get("http://192.168.1.106/start?action=R1");})
+            $('#bt_sim_R2').click(function (){$.get("http://192.168.1.106/start?action=R2");})
+            $('#bt_sim_R3').click(function (){$.get("http://192.168.1.106/start?action=R3");})
+
 
         });
     </script>
@@ -176,8 +208,9 @@
                                 <button id="bt_state_L3">L3</button>
                                 <button id="bt_state_LSieg">Sieg</button>
                                 <button id="bt_state_lFuehstart">Frühstart</button>
-                                <p> <span>1: </span><span  id="L1"></span></p>
-                                <p> <span>2: </span><span  id="L2"></span></p>
+                                <p> <span>1: </span><span  id="L1"></span> Sek.</p>
+                                <p> <span>1: </span><span  id="L2"></span> Km/h</p>
+                                <p> <span>2: </span><span  id="L3"></span> Sek.</p>
 
                             </div>
                         </div>
@@ -196,6 +229,20 @@
             <p id="zahl">Zahl</p>
         </div>
     </div>
+
+    <!--Simulator-->
+    <div id="sim" class="card mt-3">
+        <div class="card-header "> Lichtschranken Simulator</div>
+        <div class="card-body h-50 ">
+            <button id="bt_sim_L1">L1</button>
+            <button id="bt_sim_L2">L2</button>
+            <button id="bt_sim_L3">L3</button>
+            <button id="bt_sim_R1">R1</button>
+            <button id="bt_sim_R2">R2</button>
+            <button id="bt_sim_R3">R3</button>
+        </div>
+    </div>
+
 
 
 </div>

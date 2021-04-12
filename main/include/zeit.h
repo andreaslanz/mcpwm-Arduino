@@ -80,30 +80,54 @@ typedef union {
     uint8_t val;
 }dr_Bahn_Status_t;
 
-typedef struct {
-    union {
-        struct {
-            uint8_t Gestartet: 1;
-            uint8_t Laeuft: 1;
-            uint8_t Ready: 1;
-            uint8_t Fertig: 1;
+
+typedef union{
+
+
+    struct {
+        union {
+            struct {
+                uint8_t Gestartet: 1;
+                uint8_t Laeuft: 1;
+                uint8_t Ready: 1;
+                uint8_t Fertig: 1;
+            };
+            uint8_t val;
         };
-        uint8_t val;
+        dr_Bahn_Status_t LinkeBahn;
+        dr_Bahn_Status_t RechteBahn;
     };
-    dr_Bahn_Status_t LinkeBahn;
-    dr_Bahn_Status_t RechteBahn;
-} dr_Status_t;
+
+    uint32_t all;
+
+}dr_Status_t;
+
+
+
+//typedef struct {
+//        union {
+//            struct {
+//                uint8_t Gestartet: 1;
+//                uint8_t Laeuft: 1;
+//                uint8_t Ready: 1;
+//                uint8_t Fertig: 1;
+//            };
+//            uint8_t val;
+//        };
+//        dr_Bahn_Status_t LinkeBahn;
+//        dr_Bahn_Status_t RechteBahn;
+//} dr_Status_t;
 
 
 //Zeiten
 typedef struct {
-    uint32_t Lichtschr1;
-    uint32_t Lichtschr2;
-    uint32_t Lichtschr3;
+    int32_t Lichtschr1;
+    int32_t Lichtschr2;
+    int32_t Lichtschr3;
 }dr_time_lichtschr_t;
 
 typedef struct {
-    uint32_t Time_Start;
+    int32_t Time_Start;
     dr_time_lichtschr_t Links;
     dr_time_lichtschr_t Rechts;
 }dr_Zeiten_t;

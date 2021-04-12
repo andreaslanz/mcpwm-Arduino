@@ -32,8 +32,8 @@ void convert_to_json() {
     cJSON *root = NULL;
     char *out = NULL;
     root =cJSON_CreateObject();
-    cJSON_AddNumberToObject(root,"Status",dragrace.Status.val);
-    cJSON_AddNumberToObject(root,"Status_Links",dragrace.Status.LinkeBahn.val);
+    cJSON_AddNumberToObject(root,"Status",dragrace.Status.all);
+//    cJSON_AddNumberToObject(root,"Status_Links",dragrace.Status.LinkeBahn.val);
     cJSON_AddNumberToObject(root,"Start",dragrace.Zeiten.Time_Start);
     cJSON_AddNumberToObject(root,"Zeit_L1",dragrace.Zeiten.Links.Lichtschr1);
     cJSON_AddNumberToObject(root,"Zeit_L2",dragrace.Zeiten.Links.Lichtschr2);
@@ -173,6 +173,9 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
                 dragrace.Zeiten.Links.Lichtschr2=evt.capture_signal;
                 dragrace.Status.LinkeBahn.Lichschr2=DURCHFAHREN;
 
+
+
+
             }
 
         }
@@ -311,14 +314,15 @@ void neu(){
     mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
 
-    dragrace.Status.val=0;
+    dragrace.Status.all=0;
     dragrace.Status.Ready=1;
-    dragrace.Status.LinkeBahn.val=0;
-    dragrace.Status.RechteBahn.val=0;
+    dragrace.Zeiten.Time_Start=0;
     dragrace.Zeiten.Links.Lichtschr1=0;
     dragrace.Zeiten.Links.Lichtschr2=0;
     dragrace.Zeiten.Links.Lichtschr3=0;
-    dragrace.Zeiten.Time_Start=0;
+    dragrace.Zeiten.Rechts.Lichtschr1=0;
+    dragrace.Zeiten.Rechts.Lichtschr2=0;
+    dragrace.Zeiten.Rechts.Lichtschr3=0;
     dragrace_show();
 }
 void drag_start(){

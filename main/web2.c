@@ -93,8 +93,23 @@ static esp_err_t start_handler(httpd_req_t *req){
                 }
                 /** neu*/
                 if(!strcmp(param,"neu")){
-                    ESP_LOGI(TAG, "Rennen gestartet");
+                    ESP_LOGI(TAG, "neues Rennen");
                     neu(); // neues Rennen
+                }
+                /** L1*/
+                if(!strcmp(param,"L1")){
+                    ESP_LOGI(TAG, "L1");
+                    L1(); // neues Rennen
+                }
+                /** L2*/
+                if(!strcmp(param,"L2")){
+                    ESP_LOGI(TAG, "L2");
+                    L2(); // neues Rennen
+                }
+                /** L3*/
+                if(!strcmp(param,"L3")){
+                    ESP_LOGI(TAG, "L3");
+                    L3(); // neues Rennen
                 }
 
             }
