@@ -47,6 +47,18 @@ _Noreturn static void uart_event_task(void *pvParameters)
                             ESP_LOGI(TAG, "L3");
                             L3();
                         }
+                        if(c=='4'){
+                            ESP_LOGI(TAG, "R1");
+                            R1();
+                        }
+                        if(c=='5'){
+                            ESP_LOGI(TAG, "R2");
+                            R2();
+                        }
+                        if(c=='6'){
+                            ESP_LOGI(TAG, "R3");
+                            R3();
+                        }
                         if(c=='p'){
                             ESP_LOGI(TAG, "Pulse");
                             dragrace_impulse();
