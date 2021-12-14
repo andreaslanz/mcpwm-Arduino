@@ -14,7 +14,7 @@ dragrace_puls_struct_t PM;
 void dragrace_set_Test_Pin_as_Output(uint32_t pin){
     gpio_config_t gp;
     gp.intr_type = GPIO_INTR_DISABLE;
-    gp.mode = GPIO_MODE_OUTPUT;
+    gp.mode= GPIO_MODE_OUTPUT;
     gp.pin_bit_mask = pin;
     gpio_config(&gp);
 }
@@ -25,7 +25,9 @@ void dragrace_set_Test_Pin_as_Input(uint32_t pin){
     gp.intr_type = GPIO_INTR_DISABLE;
     gp.mode = GPIO_MODE_INPUT;
     gp.pin_bit_mask = pin;
+    gp.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config(&gp);
+
 }
 
 static void  impuls_task(void *pm) {
@@ -48,7 +50,9 @@ static void  impuls_task(void *pm) {
     *(uint32_t *)GPIO_OUT_W1TS_REG=pins; //Set Pin High
     vTaskDelay(1);             //delay of 10ms
     *(uint32_t *)GPIO_OUT_W1TC_REG=pins; //Set Pin Low
+    vTaskDelay(1);             //delay of 10ms
 
+    dragrace_set_Test_Pin_as_Input(pins);
 
     vTaskDelete(NULL);
 }

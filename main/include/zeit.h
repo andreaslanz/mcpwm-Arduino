@@ -24,9 +24,27 @@ extern "C" {
 #define CAP2_INT_EN BIT(29)  //Capture 2 interrupt bit
 
 
-#define GPIO_CAP0_IN   DRAGRACE_PIN_LICHTSCHRANKE_L1_INPUT   //Set GPIO 23 as  CAP0
-#define GPIO_CAP1_IN   DRAGRACE_PIN_LICHTSCHRANKE_L2_INPUT   //Set GPIO 19 as  CAP1
-#define GPIO_CAP2_IN   DRAGRACE_PIN_LICHTSCHRANKE_L3_INPUT   //Set GPIO 22 as  CAP2
+#define GPIO_CAP0_L_IN   DRAGRACE_PIN_LICHTSCHRANKE_L1_INPUT
+#define GPIO_CAP1_L_IN   DRAGRACE_PIN_LICHTSCHRANKE_L2_INPUT
+#define GPIO_CAP2_L_IN   DRAGRACE_PIN_LICHTSCHRANKE_L3_INPUT
+
+#define GPIO_CAP0_R_IN   DRAGRACE_PIN_LICHTSCHRANKE_R1_INPUT
+#define GPIO_CAP1_R_IN   DRAGRACE_PIN_LICHTSCHRANKE_R2_INPUT
+#define GPIO_CAP2_R_IN   DRAGRACE_PIN_LICHTSCHRANKE_R3_INPUT
+/**
+ * @brief MCPWM select capture signal input
+ */
+typedef enum {
+    MCPWM_UNIT0_SELECT_CAP0 = 0, /*!<Select CAP0 as input*/
+    MCPWM_UNIT0_SELECT_CAP1,     /*!<Select CAP1 as input*/
+    MCPWM_UNIT0_SELECT_CAP2,     /*!<Select CAP2 as input*/
+    MCPWM_UNIT1_SELECT_CAP0,     /*!<Select CAP0 as input*/
+    MCPWM_UNIT1_SELECT_CAP1,     /*!<Select CAP1 as input*/
+    MCPWM_UNIT1_SELECT_CAP2,     /*!<Select CAP2 as input*/
+} mcpwm_capture_signal_dragrace_t;
+
+extern const char* mcpwm_capture_signal_string[];
+
 
 //SW interrupt
 typedef union  {
@@ -71,6 +89,7 @@ typedef  mcpwm_capture_signal_t dr_Start_Capture_Chanel_t ;
 //
 typedef union {
     struct {
+        uint8_t Start:1;
         uint8_t Lichschr1:1;
         uint8_t Lichschr2:1;
         uint8_t Lichschr3:1;
@@ -103,27 +122,12 @@ typedef union{
 }dr_Status_t;
 
 
-
-//typedef struct {
-//        union {
-//            struct {
-//                uint8_t Gestartet: 1;
-//                uint8_t Laeuft: 1;
-//                uint8_t Ready: 1;
-//                uint8_t Fertig: 1;
-//            };
-//            uint8_t val;
-//        };
-//        dr_Bahn_Status_t LinkeBahn;
-//        dr_Bahn_Status_t RechteBahn;
-//} dr_Status_t;
-
-
 //Zeiten
 typedef struct {
-    int32_t Lichtschr1;
-    int32_t Lichtschr2;
-    int32_t Lichtschr3;
+    uint32_t Lichtschr1;
+    uint32_t Lichtschr2;
+    uint32_t Lichtschr3;
+    uint32_t Start;
 }dr_time_lichtschr_t;
 
 typedef struct {
@@ -140,7 +144,7 @@ typedef struct {
     char dragrace_Json_String[500];
 }dr_Dragrace_t;
 
-extern dr_Dragrace_t dragrace;
+extern  dr_Dragrace_t dragrace;
 extern uint32_t Zahl;
 
 
@@ -151,7 +155,7 @@ extern volatile uint32_t  Drag_mcpwm_intr_clr;
 
 typedef struct {
     uint32_t capture_signal;
-    mcpwm_capture_signal_t sel_cap_signal;
+    mcpwm_capture_signal_dragrace_t sel_cap_signal;
 } capture;
 
 
@@ -167,6 +171,9 @@ void neu();
 void L1();
 void L2();
 void L3();
+void R1();
+void R2();
+void R3();
 
 
 #ifdef __cplusplus

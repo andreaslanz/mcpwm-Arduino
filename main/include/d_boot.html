@@ -28,9 +28,12 @@
     **/
 
         var t_l1,t_l2,t_l3;
-        //Json Status String von ESP32 lesen
-        function d_json(){
-            $.getJSON( "http://192.168.1.106/zahl"/*, function (d){$('#L1').text(d.Zeit-L2);}*/)
+        const ESP32_URL = "http://192.168.1.115";
+        const ACTION_URL = ESP32_URL+"/zahl";
+
+        //Json Daten von ESP32 lesen
+        function d_json(url){
+            $.getJSON ( url )
                 .done(function( json ) {
                     $('#zahl').text(JSON.stringify(json));
                     $(':button').removeClass("btn-success");
@@ -38,14 +41,14 @@
                     $('#start').unbind();
 
                     if(json.Status & (1)){ //Gestartet
-                    // if(json.Status & (1)){ //Gestartet
                         $('#bt_state_startet').addClass("btn-success");
                     }
                     if(json.Status & (1<<1)){ //Läuft
                         $('#bt_state_runing').addClass("btn-success");
                         $('#start').click(function (){
                             $('#start').unbind();
-                            $.get("http://192.168.1.106/start?action=neu");
+                            // $.get("http://192.168.1.106/start?action=neu");
+                            d_json(ACTION_URL+"?action=neu")
                             t_l1=0;t_l3=0;t_l3=0;
 
                         });
@@ -58,7 +61,9 @@
                         $('#bt_state_ready').addClass("btn-success");
                         $('#start').click(function (){
                             $('#start').unbind();
-                            $.get("http://192.168.1.106/start?action=start");
+                            // $.get("http://192.168.1.106/start?action=start");
+                            d_json(ACTION_URL+"?action=start")
+
                         });
                             $('#start').removeClass('btn-primary btn-danger');
                             $('#start').addClass('btn-success');
@@ -71,17 +76,17 @@
                     if(json.Status & (1<<8)){//L1
                         $('#bt_state_L1').addClass("btn-success");
                         t_l1=json.Zeit_L1
-                        $('#L1').text((json.Zeit_L1-json.Start)/80000000);
+                        // $('#L1').text((json.Zeit_L1-json.Start)/80000000);
                     }
                     if(json.Status & (1<<9)){//L2
                         $('#bt_state_L2').addClass("btn-success");
-                        t_l2=(json.Zeit_L2-json.Start)/80000000;
+                        // t_l2=(json.Zeit_L2-json.Start)/80000000;
                     }
                     if(json.Status & (1<<10)){//L3
                         $('#bt_state_L3').addClass("btn-success");
-                        t_l3=(json.Zeit_L3-json.Start)/80000000
-                        $('#L3').text(t_l3);
-                        $('#L2').text((t_l3-t_l2)*100/3600);
+                        // t_l3=(json.Zeit_L3-json.Start)/80000000;
+                        // $('#L3').text(t_l3);
+                        // $('#L2').text((t_l3-t_l2)*100/3600);
                     }
                     if(json.Status & (1<<11)){//Frühstart Links
                         $('#bt_state_lFuehstart').addClass("btn-success");
@@ -91,7 +96,10 @@
                     }
 
                     //zeiten
-                    $('#L1').text((json.Zeit_L1-json.Start)/80000000);
+                    $('#L1').text((json.Zeit_L1));
+                    $('#L2').text((json.Zeit_L2));
+                    $('#L3').text((json.Zeit_L3));
+                    // $('#L1').text((json.Zeit_L1-json.Start)/80000000);
 
 
 
@@ -113,7 +121,7 @@
 
             // Auto Refresh on
             refreshInterval=setInterval(function(){
-                d_json();
+                d_json(ACTION_URL);
                 $('#auto-refresh').html('Stop auto Refresh');
             },500);
 
@@ -121,7 +129,7 @@
             // Reload Knopf
             $("#refresh").hide();
             $("#refresh").click(function () {
-                d_json();
+                d_json(ACTION_URL);
             });
 
             // Start Knopf
@@ -136,7 +144,7 @@
                     // Refresh on
                     refreshInterval=setInterval(function(){
                         $("#refresh").hide();
-                        d_json();
+                        d_json(ACTION_URL);
                     },500);
                 }else{
                     clearInterval(refreshInterval);
@@ -145,12 +153,18 @@
             });
 
             // Simulator
-            $('#bt_sim_L1').click(function (){$.get("http://192.168.1.106/start?action=L1");})
-            $('#bt_sim_L2').click(function (){$.get("http://192.168.1.106/start?action=L2");})
-            $('#bt_sim_L3').click(function (){$.get("http://192.168.1.106/start?action=L3");})
-            $('#bt_sim_R1').click(function (){$.get("http://192.168.1.106/start?action=R1");})
-            $('#bt_sim_R2').click(function (){$.get("http://192.168.1.106/start?action=R2");})
-            $('#bt_sim_R3').click(function (){$.get("http://192.168.1.106/start?action=R3");})
+            $('#bt_sim_L1').click(function (){d_json(ACTION_URL+"?action=L1");})
+            $('#bt_sim_L2').click(function (){d_json(ACTION_URL+"?action=L2");})
+            $('#bt_sim_L3').click(function (){d_json(ACTION_URL+"?action=L3");})
+            $('#bt_sim_R1').click(function (){d_json(ACTION_URL+"?action=R1");})
+            $('#bt_sim_R2').click(function (){d_json(ACTION_URL+"?action=R2");})
+            $('#bt_sim_R3').click(function (){d_json(ACTION_URL+"?action=R3");})
+            // $('#bt_sim_L1').click(function (){$.get("http://192.168.1.106/start?action=L1");})
+            // $('#bt_sim_L2').click(function (){$.get("http://192.168.1.106/start?action=L2");})
+            // $('#bt_sim_L3').click(function (){$.get("http://192.168.1.106/start?action=L3");})
+            // $('#bt_sim_R1').click(function (){$.get("http://192.168.1.106/start?action=R1");})
+            // $('#bt_sim_R2').click(function (){$.get("http://192.168.1.106/start?action=R2");})
+            // $('#bt_sim_R3').click(function (){$.get("http://192.168.1.106/start?action=R3");})
 
 
         });

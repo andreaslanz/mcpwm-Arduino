@@ -45,6 +45,7 @@ void setup()
 
     Serial_Start();
 
+
 #if OLED_DISPLAY
     display_setup();
 #endif
@@ -54,6 +55,7 @@ void setup()
 #endif
 
     mcpwm_setup();
+    printf("Start\n");
 
 #if WEBSERVER
     xTaskCreate(Web_Task,"Web_Task",8000,NULL,2,NULL);

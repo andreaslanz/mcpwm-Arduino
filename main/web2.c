@@ -40,43 +40,18 @@ void setCrossOrigin(httpd_req_t *req){
     httpd_resp_set_hdr(req,"Access-Control-Allow-Headers","*");
 }
 
-/*********************************
- *   URL:    /zahl
+
+
+/*******************************
  *
- *   (Daten Senden)
- **********************************/
-static esp_err_t zahl_handler(httpd_req_t *req)
-{
-    setCrossOrigin(req);
-
-    httpd_resp_set_type(req,"application/json");
-    httpd_resp_send(req, dragrace.dragrace_Json_String, strlen(dragrace.dragrace_Json_String));
-
-    return ESP_OK;
-}
-
-static const httpd_uri_t zahl = {
-        .uri       = "/zahl",
-        .method    = HTTP_GET,
-        .handler   = zahl_handler,
-        /* Let's pass response string in user
-         * context to demonstrate it's usage */
-        .user_ctx  = NULL
-};
-
-/*********************************
- *   URL:    /start
+ *     URL Parameter Handler
  *
- *   (Rennen starten)
- **********************************/
-static esp_err_t start_handler(httpd_req_t *req){
+ *******************************/
+static void url_param_handler(httpd_req_t *req){
 
     char*  buf;
     size_t buf_len;
 
-    setCrossOrigin(req);
-
-    /**URL-Parameter*/
     buf_len = httpd_req_get_url_query_len(req) + 1;
     if (buf_len > 1) {
         buf = malloc(buf_len);
@@ -113,12 +88,59 @@ static esp_err_t start_handler(httpd_req_t *req){
                 }
 
             }
+            /*!!
+             * WARTEN bis Antwort fertig berechnet
+             * */
+            vTaskDelay(10);
+
         }
         free(buf);
     }
+}
+
+/*********************************
+ *   URL:    /zahl
+ *
+ *   (Daten Senden)
+ **********************************/
+static esp_err_t zahl_handler(httpd_req_t *req)
+{
+    setCrossOrigin(req);
+
+    /**URL-Parameter*/
+    url_param_handler(req);
 
 
-    httpd_resp_send(req, req->user_ctx, strlen(req->user_ctx));
+    httpd_resp_set_type(req,"application/json");
+    httpd_resp_send(req, dragrace.dragrace_Json_String, strlen(dragrace.dragrace_Json_String));
+
+    return ESP_OK;
+}
+static const httpd_uri_t zahl = {
+        .uri       = "/zahl",
+        .method    = HTTP_GET,
+        .handler   = zahl_handler,
+        /* Let's pass response string in user
+         * context to demonstrate it's usage */
+        .user_ctx  = NULL
+};
+
+/*********************************
+ *   URL:    /start
+ *
+ *   (Rennen starten)
+ **********************************/
+static esp_err_t start_handler(httpd_req_t *req){
+
+
+    setCrossOrigin(req);
+
+    /**URL-Parameter*/
+    url_param_handler(req);
+
+
+    httpd_resp_set_type(req,"application/json");
+    httpd_resp_send(req, dragrace.dragrace_Json_String, strlen(dragrace.dragrace_Json_String));
 
     return ESP_OK;
 }
@@ -128,7 +150,7 @@ static const httpd_uri_t url_start = {
         .handler   = start_handler,
         /* Let's pass response string in user
          * context to demonstrate it's usage */
-        .user_ctx  = "Rennen gestartet"
+        .user_ctx  = NULL
 };
 /** An HTTP GET handler */
 static esp_err_t hello_get_handler(httpd_req_t *req)
@@ -198,7 +220,7 @@ static esp_err_t hello_get_handler(httpd_req_t *req)
      * string passed in user context*/
     const char* resp_str = (const char*) req->user_ctx;
     //a.l.
-    httpd_resp_set_type(req,"motherfucker");
+    httpd_resp_set_type(req,"type");
     httpd_resp_send(req, resp_str, strlen(resp_str));
 
     /* After sending the HTTP response the old HTTP request
@@ -330,7 +352,21 @@ static const httpd_uri_t ctrl = {
 static httpd_handle_t start_webserver(void)
 {
     httpd_handle_t server = NULL;
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+//    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    httpd_config_t config =  {.task_priority=((UBaseType_t) 0U) + 2,
+                              .stack_size=4096, .core_id=0x7fffffff,
+                              .server_port=80, .ctrl_port=32768,
+                              .max_open_sockets=7, .max_uri_handlers=8,
+                              .max_resp_headers=8, .backlog_conn=5,
+                              .lru_purge_enable=0, .recv_wait_timeout=5,
+                              .send_wait_timeout=5, .global_user_ctx=((void *) 0),
+                              .global_user_ctx_free_fn=((void *) 0),
+                              .global_transport_ctx=((void *) 0),
+                              .global_transport_ctx_free_fn=((void *) 0),
+                              .open_fn=((void *) 0),
+                              .close_fn=((void *) 0),
+                              .uri_match_fn=((void *) 0)
+    };
 
     // Start the httpd server
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
