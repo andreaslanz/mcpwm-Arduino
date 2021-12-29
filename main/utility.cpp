@@ -19,12 +19,15 @@ void dragrace_set_Test_Pin_as_Output(uint32_t pin){
     gpio_config(&gp);
 }
 void dragrace_set_Test_Pin_as_Input(uint32_t pin){
+    uint32_t pin_mask;
+
     gpio_config_t gp;
     gp.intr_type = GPIO_INTR_DISABLE;
     gp.mode = GPIO_MODE_INPUT;
     gp.pin_bit_mask = pin;
     gp.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config(&gp);
+
 }
 
 static void  impuls_task(void *pm) {
@@ -55,14 +58,12 @@ static void  impuls_task(void *pm) {
 }
 
 
-void dragrace_impulse(void *pvParameter1, uint32_t ulParameter2) {
+void dragrace_impulse() {
 
 
     PM.val=0;
     PM.softstart=1;
     PM.L1=1;
-    if(ulParameter2!=0)
-        vTaskDelay(ulParameter2);
     xTaskCreate(impuls_task, "pulse", 4096, &PM, 5, NULL);
 
 }

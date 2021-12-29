@@ -29,11 +29,10 @@ typedef enum {
      dragrace_pulsmode_
 }dragrace_pulse_mode_t;
 
-void dragrace_impulse(void *pvParameter1, uint32_t delay_ticks);
+void dragrace_impulse();
 
 #ifdef __cplusplus
 }
-
 #endif
 
 
