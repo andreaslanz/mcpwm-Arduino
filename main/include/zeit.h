@@ -90,6 +90,8 @@ typedef  mcpwm_capture_signal_t dr_Start_Capture_Chanel_t ;
 typedef union {
     struct {
         uint8_t Start:1;
+        uint8_t Start_Ausgewertet:1;
+        uint8_t Ziel_Ausgewertet:1;
         uint8_t Lichschr1:1;
         uint8_t Lichschr2:1;
         uint8_t Lichschr3:1;

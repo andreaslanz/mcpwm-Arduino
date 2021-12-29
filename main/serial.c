@@ -2,6 +2,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/timers.h"
 #include "freertos/queue.h"
 #include "driver/uart.h"
 #include "esp_log.h"
@@ -11,11 +12,19 @@
 
 static const char *TAG = "uart_events";
 
-
 #define EX_UART_NUM UART_NUM_0
 
 #define BUF_SIZE (1024)
 static QueueHandle_t uart0_queue;
+
+void start_task(){
+    uint32_t r=esp_random()>>24;
+    //ESP_LOGI(TAG,"Rennen wird in %d.%d Sekunden gestartet",r/100,r%100);
+    printf("Rennen wird in %d.%d Sekunden gestartet\n",r/100,r%100);
+    vTaskDelay(r);
+    dragrace_impulse(NULL, 0);
+    vTaskDelete(NULL);
+}
 
 _Noreturn static void uart_event_task(void *pvParameters)
 {
@@ -61,7 +70,8 @@ _Noreturn static void uart_event_task(void *pvParameters)
                         }
                         if(c=='p'){
                             ESP_LOGI(TAG, "Pulse");
-                            dragrace_impulse();
+//                            xTaskCreate(start_task,"Start-Task",2048,NULL,5,NULL);
+                            dragrace_impulse(NULL,500);
                         }
                         // Write
 //                        uart_write_bytes(EX_UART_NUM, (const char*) &c, 1);

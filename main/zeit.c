@@ -134,7 +134,7 @@ _Noreturn static void gpio_test_signal(void *arg)
         vTaskDelay(50);         //delay of 10ms
     }
 }
-#define LEN 9
+#define LEN 10
 void dragrace_show(){
     ESP_LOGI(TAG, "Status: L1:%d L2:%d L3:%d Frühstart-Links:%d", dragrace.Status.LinkeBahn.Lichschr1, dragrace.Status.LinkeBahn.Lichschr2, dragrace.Status.LinkeBahn.Lichschr3,dragrace.Status.LinkeBahn.Fruehstart);
     ESP_LOGI(TAG, "Status: R1:%d R2:%d R3:%d Frühstart-Rechts:%d", dragrace.Status.RechteBahn.Lichschr1, dragrace.Status.RechteBahn.Lichschr2, dragrace.Status.RechteBahn.Lichschr3,dragrace.Status.RechteBahn.Fruehstart);
@@ -173,11 +173,6 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
                 ///            "----------------|-------------|------------"
                 ESP_LOGI(DRAG, "Lichschr. %s    |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
 
-//                if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Time_Start || dragrace.Zeiten.Time_Start==0)
-//                    dragrace.Status.LinkeBahn.Fruehstart=1;
-
-                if(Zeiten.Rechts.Lichtschr1-Zeiten.Time_Start<0)
-                    dragrace.Status.RechteBahn.Fruehstart=1;
             }
         }
         //! 2. Lichtschranke Rechts (Geschwindikeitsmessung)
@@ -192,10 +187,36 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
 
         //!  3. Lichtschranke Rechts (Ziel) / zugleich Renn-Start
         if (evt.sel_cap_signal == MCPWM_UNIT1_SELECT_CAP2) {
-            dragrace.Zeiten.Rechts.Lichtschr3=evt.capture_signal;
-            dragrace.Status.RechteBahn.Lichschr3=DURCHFAHREN;
-            ESP_LOGI(DRAG, "Lichschr. %s    |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
 
+            if (dragrace.Status.LinkeBahn.Start) {
+                // Lichtschranke 3 Ziel
+                dragrace.Zeiten.Rechts.Lichtschr3 = evt.capture_signal;
+                dragrace.Status.RechteBahn.Lichschr3 = DURCHFAHREN;
+                ESP_LOGI(DRAG, "Lichschr. %s    |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],
+                         evt.capture_signal);
+
+            } else {
+
+                // Start Signal (Software Interrupt)
+                dragrace.Zeiten.Rechts.Start = evt.capture_signal;
+                dragrace.Status.RechteBahn.Start = 1;
+                dragrace.Status.Gestartet = false;
+                dragrace.Status.Laeuft = true;
+                dragrace.Status.Ready = false;
+                ESP_LOGI(DRAG, "Start     %s    |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal], 10,
+                         evt.capture_signal);
+
+
+                //Fehlstart?
+                if (dragrace.Status.RechteBahn.Lichschr1 == DURCHFAHREN) {
+                    if (dragrace.Zeiten.Rechts.Lichtschr1 < dragrace.Zeiten.Links.Start)
+                        dragrace.Status.RechteBahn.Fruehstart = true;
+                    ESP_LOGI(DRAG, "ReaktionsZeit%s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal], 10,
+                             evt.capture_signal - dragrace.Zeiten.Links.Start);
+                }
+
+
+            }
         }
 
 
@@ -211,13 +232,18 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
             if(dragrace.Status.Gestartet || dragrace.Status.Laeuft || dragrace.Status.Ready){
                 dragrace.Status.LinkeBahn.Lichschr1 = DURCHFAHREN;
                 dragrace.Zeiten.Links.Lichtschr1= evt.capture_signal;
-                ESP_LOGI(DRAG, "Lichschr. %s    |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
+                ESP_LOGI(DRAG, "Lichschr.    %s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
 
-//                if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Time_Start || dragrace.Zeiten.Time_Start==0)
-//                    dragrace.Status.LinkeBahn.Fruehstart=1;
+                // Rennen noch nicht gestartet = Frühstart
+                if( ! dragrace.Status.LinkeBahn.Start) {
+                    dragrace.Status.LinkeBahn.Fruehstart = 1;
+                    ESP_LOGI(DRAG, "FrühstartLinks  |             |");
+                }
+                // Reaktionszeit
+                if( dragrace.Status.LinkeBahn.Start == true) {
+                    ESP_LOGI(DRAG, "ReaktionsZeit L |  %*u |",10,evt.capture_signal-dragrace.Zeiten.Links.Start);
+                }
 
-                if(Zeiten.Links.Lichtschr1-Zeiten.Time_Start<0)
-                    dragrace.Status.LinkeBahn.Fruehstart=1;
             }
         }
 
@@ -238,29 +264,34 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
                 // Lichtschranke 3 Ziel
                 dragrace.Zeiten.Links.Lichtschr3=evt.capture_signal;
                 dragrace.Status.LinkeBahn.Lichschr3=DURCHFAHREN;
-                ESP_LOGI(DRAG, "Lichschr. %s    |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
+                ESP_LOGI(DRAG, "Ziel Links      |  %*u |", 10,evt.capture_signal);
 
             }else{
 
                 // Start Signal (Software Interrupt)
-                dragrace.Status.Gestartet=false;
-                dragrace.Status.Laeuft=true;
                 dragrace.Zeiten.Links.Start= evt.capture_signal;
                 dragrace.Status.LinkeBahn.Start=1;
+                dragrace.Status.Gestartet=false;
+                dragrace.Status.Laeuft=true;
                 dragrace.Status.Ready=false;
-                ESP_LOGI(DRAG, "Start     %s    |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
+                ESP_LOGI(DRAG, "Start Links  %s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal], 10,evt.capture_signal);
 
 
                 //Fehlstart?
                 if(dragrace.Status.LinkeBahn.Lichschr1 == DURCHFAHREN){
-                    if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Time_Start)
+                    if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Links.Start){
                         dragrace.Status.LinkeBahn.Fruehstart=true;
-                    ESP_LOGI(DRAG, "ReaktionsZeit%s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal-dragrace.Zeiten.Links.Start);
+                        ESP_LOGI(DRAG, "Fehlstart    %s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal-dragrace.Zeiten.Links.Lichtschr1);
+                    }
                 }
 
 
 
             }
+        }
+
+        if(!dragrace.Status.LinkeBahn.Start_Ausgewertet && dragrace.Status.LinkeBahn.Start && dragrace.Status.LinkeBahn.Lichschr1){
+            dragrace.Status.LinkeBahn.Start_Ausgewertet=true;
         }
 
         //dragrace_show();
@@ -426,8 +457,11 @@ void neu(){
 void drag_start(){
     if(!dragrace.Status.Laeuft){
         dragrace.Status.Gestartet=true;
+        dragrace.Status.Ready=false;
+        dragrace_impulse(NULL,0);
+
     }
-    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[2].sw=1;
+//    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[2].sw=1;
 //    dragrace_show();
 }
 void L1(){
@@ -461,6 +495,12 @@ void R3(){
     xTaskCreate(disp_captured_signal, "mcpwm_config", 4096, NULL, 5, NULL);  //comment if you don't want to use capture module
 //    xTaskCreate(gpio_test_signal, "gpio_test_signal", 4096, NULL, 5, NULL); //comment if you don't want to use capture module
     xTaskCreate(mcpwm_example_config, "mcpwm_example_config", 4096, NULL, 5, NULL);
+//     char buf[500];
+//     vTaskList(buf);
+//     ESP_LOGD(TAG,"*********************************");
+//     ESP_LOGD(TAG,"Task         State Prio Stack Num");
+//     ESP_LOGD(TAG,"*********************************");
+//     ESP_LOGD(TAG,"%s",buf);
 
     //neues Rennen
     neu();
