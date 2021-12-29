@@ -20,6 +20,7 @@ Dragrace*/
 #define OLED_DISPLAY 0
 
 xQueueHandle cap_queue;
+static const char* TAG="main.cpp";
 
 //Webservertask
 [[noreturn]] static void Web_Task(void *arg){
@@ -63,6 +64,10 @@ void setup()
 
 //char buf[1000];
 //    vTaskList(buf);
+//    ESP_LOGD(TAG,"*********************************");
+//    ESP_LOGD(TAG,"Task         State Prio Stack Num");
+//    ESP_LOGD(TAG,"*********************************");
+//    ESP_LOGD(TAG,"%s",buf);
 //    Serial.println(F("*********************************"));
 //    Serial.println(F("Task         State Prio Stack Num"));
 //    Serial.println(F("*********************************"));

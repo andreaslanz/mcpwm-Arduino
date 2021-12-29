@@ -10,7 +10,7 @@ idf_component_register(
             utility.cpp
             web2.c
 
-            "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src/OLEDDisplay.cpp"
+            #                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src/OLEDDisplay.cpp"
             #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/src/LoRa.cpp"
             #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/examples/LoRaDuplex/LoRaDuplex.cpp"
             #                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src/OLEDDisplayUi.cpp"
@@ -24,10 +24,10 @@ idf_component_register(
             #                "C:/Users/andi/AppData/Local/Arduino15/packages/esp32/hardware/esp32/1.0.4/boards.txt"
 
         INCLUDE_DIRS
-            "C:/ESP/arduino-esp32/variants/heltec_wifi_lora_32_V2"
-            "C:/ESP/LIB/ArduinoJson/ArduinoJson/src"
-            "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src"
-#            "C:/ESP/esp-idf/examples/common_components/protocol_examples_common/include"   #webserver
+            #                "C:/ESP/arduino-esp32/variants/heltec_wifi_lora_32_V2"
+            #                "C:/ESP/LIB/ArduinoJson/ArduinoJson/src"
+            #                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src"
+            #                "C:/ESP/esp-idf/examples/common_components/protocol_examples_common/include"   #webserver
 
 
             #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/src"
