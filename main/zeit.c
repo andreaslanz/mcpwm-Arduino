@@ -347,21 +347,22 @@ static void IRAM_ATTR isr_handler()
      * */
     /**Check for interrupt on rising edge on CAP0 signal original*/
     if (mcpwm_unit0_intr_status & CAP0_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
+        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
+//        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP0;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
         ESP_EARLY_LOGD(TAG,"CAP0-L");
     }
     /**Check for interrupt on rising edge on CAP1 signal original*/
     if (mcpwm_unit0_intr_status & CAP1_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP1]; //get capture signal counter value
+        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP1;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
         ESP_EARLY_LOGD(TAG,"CAP1-L");
     }
     /**Check for interrupt on rising edge on CAP2 signal original*/
     if (mcpwm_unit0_intr_status & CAP2_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP2]; //get capture signal counter value
+        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP2;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
         ESP_EARLY_LOGD(TAG,"CAP2-L");
@@ -372,21 +373,21 @@ static void IRAM_ATTR isr_handler()
      * */
     /**Check for interrupt on rising edge on CAP0 signal original*/
     if (mcpwm_unit1_intr_status & CAP0_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
+        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP0;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
         ESP_EARLY_LOGD(TAG,"CAP0-R");
     }
     /**Check for interrupt on rising edge on CAP1 signal original*/
     if (mcpwm_unit1_intr_status & CAP1_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_val_ch[MCPWM_SELECT_CAP1]; //get capture signal counter value
+        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP1;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
         ESP_EARLY_LOGD(TAG,"CAP1-R");
     }
     /**Check for interrupt on rising edge on CAP2 signal original*/
     if (mcpwm_unit1_intr_status & CAP2_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_val_ch[MCPWM_SELECT_CAP2]; //get capture signal counter value
+        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
         evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP2;
         xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
         ESP_EARLY_LOGD(TAG,"CAP2-R");
@@ -465,27 +466,27 @@ void drag_start(){
 //    dragrace_show();
 }
 void L1(){
-    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[MCPWM_SELECT_CAP0].sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP0].capn_sw=1;
 //    dragrace_show();
 }
 void L2(){
-    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[MCPWM_SELECT_CAP1].sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP1].capn_sw=1;
 //    dragrace_show();
 }
 void L3(){
-    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[MCPWM_SELECT_CAP2].sw=1;
+    MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
 //    dragrace_show();
 }
 void R1(){
-    MCPWM[MCPWM_UNIT_1]->cap_cfg_ch[MCPWM_SELECT_CAP0].sw=1;
+    MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP0].capn_sw=1;
 //    dragrace_show();
 }
 void R2(){
-    MCPWM[MCPWM_UNIT_1]->cap_cfg_ch[MCPWM_SELECT_CAP1].sw=1;
+    MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP1].capn_sw=1;
 //    dragrace_show();
 }
 void R3(){
-    MCPWM[MCPWM_UNIT_1]->cap_cfg_ch[MCPWM_SELECT_CAP2].sw=1;
+    MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
 //    dragrace_show();
 }
  void mcpwm_setup()

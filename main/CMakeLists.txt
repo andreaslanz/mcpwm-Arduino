@@ -24,6 +24,7 @@ idf_component_register(
             #                "C:/Users/andi/AppData/Local/Arduino15/packages/esp32/hardware/esp32/1.0.4/boards.txt"
 
         INCLUDE_DIRS
+        "."
             #                "C:/ESP/arduino-esp32/variants/heltec_wifi_lora_32_V2"
             #                "C:/ESP/LIB/ArduinoJson/ArduinoJson/src"
             #                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src"
@@ -40,7 +41,7 @@ idf_component_register(
             #                "C:/ESP/heltec/Heltec_ESP32/examples/Factory_Test/WiFi_LoRa_32FactoryTest"
 
         PRIV_REQUIRES arduino-esp32
-        PRIV_REQUIRES nvs_flash esp_http_server protocol_examples_common json #webserver
+        REQUIRES nvs_flash esp_http_server esp_http_client protocol_examples_common json #webserver
 )
 
 
