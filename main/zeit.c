@@ -295,6 +295,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
         }
 
         //dragrace_show();
+        convert_to_json();
     }
 }
 
