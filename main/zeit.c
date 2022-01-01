@@ -50,7 +50,7 @@ void convert_to_json() {
     free(out);
     cJSON_Delete(root);
 }
-
+void action(void *f()){f();}
 
 static void mcpwm_example_gpio_initialize()
 {
@@ -454,6 +454,7 @@ void neu(){
     dragrace.Zeiten.Rechts.Lichtschr2=0;
     dragrace.Zeiten.Rechts.Lichtschr3=0;
 
+    convert_to_json();
     //dragrace_show();
 }
 void drag_start(){
@@ -461,8 +462,8 @@ void drag_start(){
         dragrace.Status.Gestartet=true;
         dragrace.Status.Ready=false;
         dragrace_impulse(NULL,0);
-
     }
+    convert_to_json();
 //    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[2].sw=1;
 //    dragrace_show();
 }
