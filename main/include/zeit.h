@@ -177,6 +177,7 @@ void R1();
 void R2();
 void R3();
 void action(void *f());
+void action(void (*f)());
 
 
 #ifdef __cplusplus

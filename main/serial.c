@@ -38,6 +38,7 @@ _Noreturn static void uart_event_task(void *pvParameters)
                     while(uart_read_bytes(EX_UART_NUM, (uint8_t *) &c, 1, portMAX_DELAY)){
                         if(c=='n'){
                             ESP_LOGI(TAG, "Neu");
+                            action(neu);
                             neu();
                         }
                         if(c=='s'){

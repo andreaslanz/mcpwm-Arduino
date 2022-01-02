@@ -49,6 +49,9 @@ void convert_to_json() {
     //ESP_LOGI(TAG,"json:%s",out);
     free(out);
     cJSON_Delete(root);
+void action(void (*f)()){
+    f();
+    convert_to_json();
 }
 void action(void *f()){f();}
 
