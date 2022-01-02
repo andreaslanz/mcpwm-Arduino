@@ -62,12 +62,18 @@ void setup()
     xTaskCreate(Web_Task,"Web_Task",8000,NULL,2,NULL);
 #endif
 
+
+
+/// List all Task need:
+//+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+//+CONFIG_FREERTOS_USE_STATS_FORMATTING_FUNCTIONS=y
+//+CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID=y
 //char buf[1000];
 //    vTaskList(buf);
-//    ESP_LOGD(TAG,"*********************************");
-//    ESP_LOGD(TAG,"Task         State Prio Stack Num");
-//    ESP_LOGD(TAG,"*********************************");
-//    ESP_LOGD(TAG,"%s",buf);
+//    ESP_LOGI(TAG,"*********************************");
+//    ESP_LOGI(TAG,"Task         State Prio Stack Num");
+//    ESP_LOGI(TAG,"*********************************");
+//    ESP_LOGI(TAG,"%s",buf);
 //    Serial.println(F("*********************************"));
 //    Serial.println(F("Task         State Prio Stack Num"));
 //    Serial.println(F("*********************************"));
