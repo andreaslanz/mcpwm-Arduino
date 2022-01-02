@@ -14,6 +14,7 @@ extern "C" {
 #include "driver/mcpwm.h"
 #include "soc/mcpwm_periph.h"
 #include "pin_def.h"
+#include "freertos/semphr.h"
 
 #define MCPWM_EN_CAPTURE 1   //Make this 1 to test capture submodule of mcpwm, measure time between rising/falling edge of captured signal
 #define MCPWM_GPIO_INIT 1    //select which function to use to initialize gpio signals
@@ -155,6 +156,9 @@ extern uint32_t Zahl;
 extern volatile uint32_t  Drag_mcpwm_intr_status;
 extern volatile uint32_t  Drag_mcpwm_intr_clr;
 
+// Semaphore
+extern SemaphoreHandle_t xSemaphore;
+
 typedef struct {
     uint32_t capture_signal;
     mcpwm_capture_signal_dragrace_t sel_cap_signal;
@@ -176,7 +180,6 @@ void L3();
 void R1();
 void R2();
 void R3();
-void action(void *f());
 void action(void (*f)());
 
 

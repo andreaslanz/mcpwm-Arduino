@@ -7,6 +7,7 @@
 #include "include/zeit.h"
 #include "include/display.h"
 #include "include/utility.h"
+#include "freertos/semphr.h"
 #include <cJSON.h>
 
 xQueueHandle cap_queue;
@@ -17,6 +18,8 @@ static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1};
 // Interrupt Test
 #define DRAGRACE_INTERRUPT_TEST 0
 
+// Semaphore
+SemaphoreHandle_t xSemaphore = NULL;
 
 uint32_t Zahl;
 dr_Dragrace_t dragrace;
@@ -36,24 +39,35 @@ static volatile uint32_t  time;
 
 /** Convert to json*/
 void convert_to_json() {
-    cJSON *root = NULL;
-    char *out = NULL;
-    root =cJSON_CreateObject();
-    cJSON_AddNumberToObject(root,"Status",dragrace.Status.all);
-    cJSON_AddNumberToObject(root,"Start",dragrace.Zeiten.Time_Start);
-    cJSON_AddNumberToObject(root,"Zeit_L1",dragrace.Zeiten.Links.Lichtschr1);
-    cJSON_AddNumberToObject(root,"Zeit_L2",dragrace.Zeiten.Links.Lichtschr2);
-    cJSON_AddNumberToObject(root,"Zeit_L3",dragrace.Zeiten.Links.Lichtschr3);
-    out = cJSON_Print(root);
-    strcpy(dragrace.dragrace_Json_String,out);
-    //ESP_LOGI(TAG,"json:%s",out);
-    free(out);
-    cJSON_Delete(root);
+    if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
+    {
+        /* We were able to obtain the semaphore and can now access the
+        shared resource. */
+
+        cJSON *root = NULL;
+        char *out = NULL;
+        root =cJSON_CreateObject();
+        cJSON_AddNumberToObject(root,"Status",dragrace.Status.all);
+        cJSON_AddNumberToObject(root,"Start",dragrace.Zeiten.Time_Start);
+        cJSON_AddNumberToObject(root,"Zeit_L1",dragrace.Zeiten.Links.Lichtschr1);
+        cJSON_AddNumberToObject(root,"Zeit_L2",dragrace.Zeiten.Links.Lichtschr2);
+        cJSON_AddNumberToObject(root,"Zeit_L3",dragrace.Zeiten.Links.Lichtschr3);
+        out = cJSON_Print(root);
+        strcpy(dragrace.dragrace_Json_String,out);
+        //ESP_LOGI(TAG,"json:%s",out);
+        free(out);
+        cJSON_Delete(root);
+
+        /* We have finished accessing the shared resource.  Release the
+        semaphore. */
+        xSemaphoreGive( xSemaphore );
+    }
+
+}
 void action(void (*f)()){
     f();
     convert_to_json();
 }
-void action(void *f()){f();}
 
 static void mcpwm_example_gpio_initialize()
 {
@@ -412,8 +426,11 @@ static void IRAM_ATTR isr_handler()
 /**
  * @brief Configure whole MCPWM module
  */
-static void mcpwm_example_config(void *arg)
-{
+static void mcpwm_example_config(void *arg){
+
+    // Semaphore
+    xSemaphore = xSemaphoreCreateMutex();
+
     //1. mcpwm gpio initialization
     mcpwm_example_gpio_initialize();
 
