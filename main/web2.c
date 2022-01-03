@@ -146,14 +146,6 @@ static esp_err_t start_handler(httpd_req_t *req){
 
     return ESP_OK;
 }
-static const httpd_uri_t url_start = {
-        .uri       = "/start",
-        .method    = HTTP_GET,
-        .handler   = start_handler,
-        /* Let's pass response string in user
-         * context to demonstrate it's usage */
-        .user_ctx  = NULL
-};
 /** An HTTP GET handler */
 static esp_err_t hello_get_handler(httpd_req_t *req)
 {
@@ -376,7 +368,6 @@ static httpd_handle_t start_webserver(void)
         // Set URI handlers
         ESP_LOGI(TAG, "Registering URI handlers");
         httpd_register_uri_handler(server, &zahl);
-        httpd_register_uri_handler(server, &url_start);
         httpd_register_uri_handler(server, &hello);
         httpd_register_uri_handler(server, &echo);
         httpd_register_uri_handler(server, &ctrl);
