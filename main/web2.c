@@ -266,12 +266,6 @@ static esp_err_t echo_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static const httpd_uri_t echo = {
-        .uri       = "/echo",
-        .method    = HTTP_POST,
-        .handler   = echo_post_handler,
-        .user_ctx  = NULL
-};
 
 /* This handler allows the custom error handling functionality to be
  * tested from client side. For that, when a PUT request 0 is sent to
@@ -331,7 +325,6 @@ static httpd_handle_t start_webserver(void)
         ESP_LOGI(TAG, "Registering URI handlers");
         httpd_register_uri_handler(server, &zahl);
         httpd_register_uri_handler(server, &hello);
-        httpd_register_uri_handler(server, &echo);
         return server;
     }
 
