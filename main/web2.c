@@ -127,25 +127,6 @@ static const httpd_uri_t zahl = {
         .user_ctx  = NULL
 };
 
-/*********************************
- *   URL:    /start
- *
- *   (Rennen starten)
- **********************************/
-static esp_err_t start_handler(httpd_req_t *req){
-
-
-    setCrossOrigin(req);
-
-    /**URL-Parameter*/
-    url_param_handler(req);
-
-
-    httpd_resp_set_type(req,"application/json");
-    httpd_resp_send(req, dragrace.dragrace_Json_String, strlen(dragrace.dragrace_Json_String));
-
-    return ESP_OK;
-}
 
 
 /* This handler allows the custom error handling functionality to be
