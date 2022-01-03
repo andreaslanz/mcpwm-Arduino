@@ -225,14 +225,6 @@ static esp_err_t hello_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static const httpd_uri_t hello = {
-        .uri       = "/hello",
-        .method    = HTTP_GET,
-        .handler   = hello_get_handler,
-        /* Let's pass response string in user
-         * context to demonstrate it's usage */
-        .user_ctx  = "Hello World!"
-};
 
 
 /* This handler allows the custom error handling functionality to be
@@ -292,7 +284,6 @@ static httpd_handle_t start_webserver(void)
         // Set URI handlers
         ESP_LOGI(TAG, "Registering URI handlers");
         httpd_register_uri_handler(server, &zahl);
-        httpd_register_uri_handler(server, &hello);
         return server;
     }
 
