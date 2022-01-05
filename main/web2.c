@@ -114,7 +114,20 @@ static esp_err_t zahl_handler(httpd_req_t *req)
 
 
     httpd_resp_set_type(req,"application/json");
-    httpd_resp_send(req, dragrace.dragrace_Json_String, strlen(dragrace.dragrace_Json_String));
+
+    if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
+    {
+        /* We were able to obtain the semaphore and can now access the
+        shared resource. */
+
+        httpd_resp_send(req, dragrace.dragrace_Json_String, strlen(dragrace.dragrace_Json_String));
+
+
+        /* We have finished accessing the shared resource.  Release the
+        semaphore. */
+        xSemaphoreGive( xSemaphore );
+    }
+
 
     return ESP_OK;
 }
