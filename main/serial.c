@@ -39,11 +39,10 @@ _Noreturn static void uart_event_task(void *pvParameters)
                         if(c=='n'){
                             ESP_LOGI(TAG, "Neu");
                             action(neu);
-                            neu();
                         }
                         if(c=='s'){
                             ESP_LOGI(TAG, "Start");
-                            drag_start();
+                            action(drag_start);
                         }
                         if(c=='1'){
                             ESP_LOGI(TAG, "L1");
@@ -111,5 +110,5 @@ void Serial_Start()
 
 
     //Create a task to handler UART event from ISR
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, 12, NULL);
 }

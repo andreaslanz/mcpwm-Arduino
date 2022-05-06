@@ -2,6 +2,9 @@
 <!--suppress ALL -->
 <html lang="en">
 <head>
+    <!-----------------------------------------
+         Internet Seite für Dragrace Steuerung
+    ------------------------------------------->
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,10 +30,34 @@
     *
     **/
 
-        var t_l1,t_l2,t_l3;
-        const ESP32_URL = "http://espressif";
-        // const ESP32_URL = "http://192.168.1.115";
-        const ACTION_URL = ESP32_URL+"/zahl";
+   var t_l1, t_l2, t_l3;
+   const ESP32_URL = "http://espressif";
+   // const ESP32_URL = "http://192.168.1.115";
+   const ACTION_URL = ESP32_URL + "/zahl";
+
+   const Drag_Status = {
+       none: 0,
+       Gestartet: 1 << 1 - 1,
+       Laeuft: 1 << 2 - 1,
+       Ready: 1 << 3 - 1,
+       Fertig: 1 << 4 - 1,
+       Links_Start: 1 << 9 - 1,
+       Links_Start_Ausgewertet: 1 << 10 - 1,
+       Links_Ziel_Ausgewertet: 1 << 11 - 1,
+       Links_Lichschr1: 1 << 12 - 1,
+       Links_Lichschr2: 1 << 13 - 1,
+       Links_Lichschr3: 1 << 14 - 1,
+       Links_Fruehstart: 1 << 15 - 1,
+       Links_Sieg: 1 << 16 - 1,
+       Rechts_Start: 1 << 17 - 1,
+       Rechts_Start_Ausgewertet: 1 << 18 - 1,
+       Rechts_Ziel_Ausgewertet: 1 << 19 - 1,
+       Rechts_Lichschr1: 1 << 20 - 1,
+       Rechts_Lichschr2: 1 << 21 - 1,
+       Rechts_Lichschr3: 1 << 22 - 1,
+       Rechts_Fruehstart: 1 << 23 - 1,
+       Rechts_Sieg: 1 << 24 - 1,
+   };
 
         //Json Daten von ESP32 lesen
         function d_json(url){
@@ -41,14 +68,15 @@
                     // $('#stat :button').removeClass("btn-success");
                     $('#start').unbind();
 
-                    if(json.Status & (1)){ //Gestartet
+                    if(json.Status & Drag_Status.Gestartet){ //Gestartet
                         $('#bt_state_startet').addClass("btn-success");
                     }
-                    if(json.Status & (1<<1)){ //Läuft
+                    if(json.Status & Drag_Status.Laeuft)            //Läuft
                         $('#bt_state_runing').addClass("btn-success");
+                    
+                    if(json.Status & Drag_Status.Laeuft || json.Status & Drag_Status.Fertig){           //Läuft
                         $('#start').click(function (){
                             $('#start').unbind();
-                            // $.get("http://192.168.1.106/start?action=neu");
                             d_json(ACTION_URL+"?action=neu")
                             t_l1=0;t_l3=0;t_l3=0;
 
@@ -58,11 +86,10 @@
                         $('#start').html('Stop');
 
                     }
-                    if(json.Status & (1<<2)){ //Ready
+                    if(json.Status & Drag_Status.Ready){            //Ready
                         $('#bt_state_ready').addClass("btn-success");
                         $('#start').click(function (){
                             $('#start').unbind();
-                            // $.get("http://192.168.1.106/start?action=start");
                             d_json(ACTION_URL+"?action=start")
 
                         });
@@ -70,37 +97,64 @@
                             $('#start').addClass('btn-success');
                         $('#start').html('Start');
                     }
-                    if(json.Status & (1<<3)){//Fertig
+                    if(json.Status & Drag_Status.Fertig){           //Fertig
                         $('#bt_state_finsish').addClass("btn-success");
                     }
 
-                    if(json.Status & (1<<8)){//L1
+                    if(json.Status & Drag_Status.Links_Start){      //Start
+                        $('#bt_state_LStart').addClass("btn-success");
+                        t_l1=json.Zeit_L1
+                    }
+                    if(json.Status & Drag_Status.Links_Lichschr1){  //L1
                         $('#bt_state_L1').addClass("btn-success");
                         t_l1=json.Zeit_L1
-                        // $('#L1').text((json.Zeit_L1-json.Start)/80000000);
                     }
-                    if(json.Status & (1<<9)){//L2
+                    if(json.Status & Drag_Status.Links_Lichschr2){  //L2
                         $('#bt_state_L2').addClass("btn-success");
                         // t_l2=(json.Zeit_L2-json.Start)/80000000;
                     }
-                    if(json.Status & (1<<10)){//L3
+                    if(json.Status & Drag_Status.Links_Lichschr3){  //L3
                         $('#bt_state_L3').addClass("btn-success");
                         // t_l3=(json.Zeit_L3-json.Start)/80000000;
                         // $('#L3').text(t_l3);
                         // $('#L2').text((t_l3-t_l2)*100/3600);
                     }
-                    if(json.Status & (1<<11)){//Frühstart Links
+                    if(json.Status & Drag_Status.Links_Fruehstart){ //Frühstart Links
                         $('#bt_state_lFuehstart').addClass("btn-success");
                     }
-                    if(json.Status & (1<<12)){//Sieg Links
+                    if(json.Status & Drag_Status.Links_Sieg){       //Sieg Links
                         $('#bt_state_LSieg').addClass("btn-success");
                     }
+                    //Zufall Start
+                    $('#random').text(json.rand/100);
 
-                    //zeiten
-                    $('#L1').text((json.Zeit_L1));
-                    $('#L2').text((json.Zeit_L2));
-                    $('#L3').text((json.Zeit_L3));
-                    // $('#L1').text((json.Zeit_L1-json.Start)/80000000);
+                    /// Zeiten
+                    var Start_Links=    json.Start_Links;
+                    var L1 =            json.Zeit_L1;
+                    var L2,L3;
+                        L2 =            json.Zeit_L2;
+                        L3 =            json.Zeit_L3;
+                    var COUNTS_PRO_SEC=  80e6; //80 Millionen (Zähler wird mit 80MHz getaktet)
+
+                    //Reaktionszeit
+                    var r = L1- Start_Links;
+                    $('#LReak').text(r/COUNTS_PRO_SEC+" Sec. ("+r+")");
+
+                    //Lichtschranken
+                    $('#L1').text((L1 - Start_Links)/COUNTS_PRO_SEC+" Sec.");
+                    if (json.Status&Drag_Status.Links_Lichschr3){
+                        var LICHTSCHRANKEN_ABSTAND_IN_KM = 0.0001;
+                        var COUNTS_BEI_1_KMH_UND_LICHTSCHRANKENABSTAND_X = COUNTS_PRO_SEC/(1/LICHTSCHRANKEN_ABSTAND_IN_KM) * 3600;
+                        var kmh = COUNTS_BEI_1_KMH_UND_LICHTSCHRANKENABSTAND_X / (L3-L2);
+                        kmh=Math.round(kmh*1000)/1000;
+                        $('#L2').text(kmh +" km/h");
+                        var gesamtzeit= Math.round((L3 - Start_Links)/COUNTS_PRO_SEC*1000)/1000
+                        $('#L3').text(gesamtzeit+" Sec.");
+                    }else{
+                        $('#L2').text(0);
+                        $('#L3').text(0);
+                    }
+            // $('#L1').text((json.Zeit_L1-json.Start)/80000000);
 
 
 
@@ -205,6 +259,7 @@
             <button id="bt_state_startet">Gestartet</button>
             <button id="bt_state_runing">Läuft</button>
             <button id="bt_state_finsish">Fertig</button>
+            <div id="random-card" class="card-text">Zeit bis Start: <span id="random"></span></div>
         </div>
     </div>
     <!--Ausgabe Zeiten-->
@@ -218,14 +273,16 @@
                         <div class="card border-1">
                             <div class="card-header">Links </div>
                             <div class="card-body">
+                                <button id="bt_state_LStart">Start</button>
                                 <button id="bt_state_L1">L1</button>
                                 <button id="bt_state_L2">L2</button>
                                 <button id="bt_state_L3">L3</button>
                                 <button id="bt_state_LSieg">Sieg</button>
                                 <button id="bt_state_lFuehstart">Frühstart</button>
-                                <p> <span>1: </span><span  id="L1"></span> Sek.</p>
-                                <p> <span>1: </span><span  id="L2"></span> Km/h</p>
-                                <p> <span>2: </span><span  id="L3"></span> Sek.</p>
+<!--                                <div class="card-text"> <span>Reaktionszeit: </span><span  id="LReak"></span> </div>-->
+                                <div class="card-text"> <span>Reaktionszeit: </span><span  id="L1"></span> </div>
+                                <div class="card-text"> <span>Geschwindigkeit: </span><span  id="L2"></span> </div>
+                                <div class="card-text"> <span>Gesamtzeit: </span><span  id="L3"></span> </div>
 
                             </div>
                         </div>

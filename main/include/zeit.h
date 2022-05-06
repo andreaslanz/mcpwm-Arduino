@@ -16,7 +16,6 @@ extern "C" {
 #include "pin_def.h"
 #include "freertos/semphr.h"
 
-#define MCPWM_EN_CAPTURE 1   //Make this 1 to test capture submodule of mcpwm, measure time between rising/falling edge of captured signal
 #define MCPWM_GPIO_INIT 1    //select which function to use to initialize gpio signals
 #define CAP_SIG_NUM 3   //Three capture signals
 
@@ -135,6 +134,7 @@ typedef struct {
 
 typedef struct {
     int32_t Time_Start;
+    uint8_t Time_Random;
     dr_time_lichtschr_t Links;
     dr_time_lichtschr_t Rechts;
 }dr_Zeiten_t;
@@ -174,6 +174,7 @@ static void mcpwm_example_config(void *arg);
 void mcpwm_setup();
 void drag_start();
 void neu();
+void fertig();
 void L1();
 void L2();
 void L3();

@@ -9,7 +9,8 @@ extern "C" {
 #endif
 
 void dragrace_set_Test_Pin_as_Output(uint32_t pin);
-void dragrace_set_Test_Pin_as_Input(uint32_t pin);
+void dragrace_set_Test_Pin_as_Input_Pullup(uint32_t pin);
+void dragrace_set_Test_Pin_as_Input_Pulldown(uint32_t pin);
 
 typedef struct {
     union {

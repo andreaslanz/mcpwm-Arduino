@@ -66,12 +66,12 @@ static void url_param_handler(httpd_req_t *req){
                 /** start*/
                 if(!strcmp(param,"start")){
                     ESP_LOGI(TAG, "Rennen gestartet");
-                    drag_start(); // Rennen starten
+                    action (drag_start); // Rennen starten
                 }
                 /** neu*/
                 if(!strcmp(param,"neu")){
                     ESP_LOGI(TAG, "neues Rennen");
-                    neu(); // neues Rennen
+                    action(neu);
                 }
                 /** L1*/
                 if(!strcmp(param,"L1")){

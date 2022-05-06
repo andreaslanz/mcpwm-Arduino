@@ -15,8 +15,8 @@ Dragrace*/
 
 #include "Arduino.h"
 
-#define WEBSERVER 0
-#define WEBSERVER2 1
+#define WEBSERVER 0 //alt geht nicht
+#define WEBSERVER2 0  //neuer Server
 #define OLED_DISPLAY 0
 
 xQueueHandle cap_queue;

@@ -35,7 +35,6 @@ volatile uint32_t  Drag_mcpwm_intr_clr;
 static volatile uint32_t  time;
 //extern void inline ets_delay_us(uint32_t t);
 
-/** Convert to json*/
 void convert_to_json() {
     if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
     {
@@ -46,10 +45,14 @@ void convert_to_json() {
         char *out = NULL;
         root =cJSON_CreateObject();
         cJSON_AddNumberToObject(root,"Status",dragrace.Status.all);
-        cJSON_AddNumberToObject(root,"Start",dragrace.Zeiten.Time_Start);
+        cJSON_AddNumberToObject(root,"Start_Links",dragrace.Zeiten.Links.Start);
         cJSON_AddNumberToObject(root,"Zeit_L1",dragrace.Zeiten.Links.Lichtschr1);
         cJSON_AddNumberToObject(root,"Zeit_L2",dragrace.Zeiten.Links.Lichtschr2);
         cJSON_AddNumberToObject(root,"Zeit_L3",dragrace.Zeiten.Links.Lichtschr3);
+        cJSON_AddNumberToObject(root,"Zeit_R1",dragrace.Zeiten.Rechts.Lichtschr1);
+        cJSON_AddNumberToObject(root,"Zeit_R2",dragrace.Zeiten.Rechts.Lichtschr2);
+        cJSON_AddNumberToObject(root,"Zeit_R3",dragrace.Zeiten.Rechts.Lichtschr3);
+        cJSON_AddNumberToObject(root,"rand",dragrace.Zeiten.Time_Random);
         out = cJSON_Print(root);
         strcpy(dragrace.dragrace_Json_String,out);
         //ESP_LOGI(TAG,"json:%s",out);
@@ -67,6 +70,7 @@ void action(void (*f)()){
     convert_to_json();
 }
 
+static void mcpwm_example_gpio_initialize(){
     printf("initializing mcpwm gpio...\n");
     ///Interrupt Test Ausgang
 #if DRAGRACE_INTERRUPT_TEST
@@ -113,8 +117,7 @@ void action(void (*f)()){
 /**
  * @brief Set gpio 12 as our test signal that generates high-low waveform continuously, connect this gpio to capture pin.
  */
-_Noreturn static void gpio_test_signal(void *arg)
-{
+_Noreturn static void gpio_test_signal(void *arg){
     printf("intializing test signal...\n");
     gpio_config_t gp;
     gp.intr_type = GPIO_INTR_DISABLE;
@@ -132,6 +135,7 @@ _Noreturn static void gpio_test_signal(void *arg)
     }
 }
 #define LEN 10
+
 void dragrace_show(){
     ESP_LOGI(TAG, "Status: L1:%d L2:%d L3:%d Frühstart-Links:%d", dragrace.Status.LinkeBahn.Lichschr1, dragrace.Status.LinkeBahn.Lichschr2, dragrace.Status.LinkeBahn.Lichschr3,dragrace.Status.LinkeBahn.Fruehstart);
     ESP_LOGI(TAG, "Status: R1:%d R2:%d R3:%d Frühstart-Rechts:%d", dragrace.Status.RechteBahn.Lichschr1, dragrace.Status.RechteBahn.Lichschr2, dragrace.Status.RechteBahn.Lichschr3,dragrace.Status.RechteBahn.Fruehstart);
@@ -147,6 +151,7 @@ void dragrace_show(){
  * @brief Auswertung des Interrupts
  *
  */
+_Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
     capture evt;
     static long count=0;
     while (1) {
@@ -163,16 +168,25 @@ void dragrace_show(){
                 dragrace.Status.RechteBahn.Lichschr1 = DURCHFAHREN;
                 dragrace.Zeiten.Rechts.Lichtschr1= evt.capture_signal;
                 ///            "----------------|-------------|------------"
-                ESP_LOGI(DRAG, "Lichschr. %s    |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
-
+                ESP_LOGI(DRAG, "Lichschr.    %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
             }
+            // Rennen noch nicht gestartet = Frühstart
+            if(!dragrace.Status.RechteBahn.Start && evt.sel_cap_signal != MCPWM_UNIT1_SELECT_CAP2) {
+                dragrace.Status.RechteBahn.Fruehstart = 1;
+                ESP_LOGI(DRAG, "FrühstartRechts |             |");
+            }
+            // Reaktionszeit
+            if( dragrace.Status.RechteBahn.Start == true) {
+                ESP_LOGI(DRAG, "ReaktionsZeit R |             |  %*u |",10,evt.capture_signal-dragrace.Zeiten.Rechts.Start);
+            }
+
         }
         //! 2. Lichtschranke Rechts (Geschwindikeitsmessung)
         if (evt.sel_cap_signal == MCPWM_UNIT1_SELECT_CAP1) {
             if(dragrace.Status.Laeuft == true && dragrace.Status.Gestartet==false){
                 dragrace.Zeiten.Rechts.Lichtschr2=evt.capture_signal;
                 dragrace.Status.RechteBahn.Lichschr2=DURCHFAHREN;
-                ESP_LOGI(DRAG, "Lichschr. %s    |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
+                ESP_LOGI(DRAG, "Lichschr.    %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
 
             }
         }
@@ -180,12 +194,16 @@ void dragrace_show(){
         //!  3. Lichtschranke Rechts (Ziel) / zugleich Renn-Start
         if (evt.sel_cap_signal == MCPWM_UNIT1_SELECT_CAP2) {
 
-            if (dragrace.Status.LinkeBahn.Start) {
+            if (dragrace.Status.RechteBahn.Start) {
                 // Lichtschranke 3 Ziel
                 dragrace.Zeiten.Rechts.Lichtschr3 = evt.capture_signal;
                 dragrace.Status.RechteBahn.Lichschr3 = DURCHFAHREN;
-                ESP_LOGI(DRAG, "Lichschr. %s    |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],
+                ESP_LOGI(DRAG, "ZielRechts   %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],
                          evt.capture_signal);
+                // fertig
+                if(dragrace.Status.LinkeBahn.Lichschr3){
+                    action(fertig);
+                }
 
             } else {
 
@@ -195,23 +213,18 @@ void dragrace_show(){
                 dragrace.Status.Gestartet = false;
                 dragrace.Status.Laeuft = true;
                 dragrace.Status.Ready = false;
-                ESP_LOGI(DRAG, "Start     %s    |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal], 10,
-                         evt.capture_signal);
+                ESP_LOGI(DRAG, "Start Rechts    |             | %u",  evt.capture_signal);
 
 
                 //Fehlstart?
                 if (dragrace.Status.RechteBahn.Lichschr1 == DURCHFAHREN) {
-                    if (dragrace.Zeiten.Rechts.Lichtschr1 < dragrace.Zeiten.Links.Start)
+                    if (dragrace.Zeiten.Rechts.Lichtschr1 < dragrace.Zeiten.Rechts.Start)
                         dragrace.Status.RechteBahn.Fruehstart = true;
-                    ESP_LOGI(DRAG, "ReaktionsZeit%s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal], 10,
-                             evt.capture_signal - dragrace.Zeiten.Links.Start);
+                    ESP_LOGI(DRAG, "ReaktionsZeit%s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],
+                             evt.capture_signal - dragrace.Zeiten.Rechts. Lichtschr1);
                 }
-
-
             }
         }
-
-
         /**
          *
          * LINKE BAHN
@@ -227,7 +240,7 @@ void dragrace_show(){
                 ESP_LOGI(DRAG, "Lichschr.    %s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
 
                 // Rennen noch nicht gestartet = Frühstart
-                if( ! dragrace.Status.LinkeBahn.Start) {
+                if(!dragrace.Status.LinkeBahn.Start && evt.sel_cap_signal != MCPWM_UNIT0_SELECT_CAP2) {
                     dragrace.Status.LinkeBahn.Fruehstart = 1;
                     ESP_LOGI(DRAG, "FrühstartLinks  |             |");
                 }
@@ -235,7 +248,6 @@ void dragrace_show(){
                 if( dragrace.Status.LinkeBahn.Start == true) {
                     ESP_LOGI(DRAG, "ReaktionsZeit L |  %*u |",10,evt.capture_signal-dragrace.Zeiten.Links.Start);
                 }
-
             }
         }
 
@@ -244,7 +256,7 @@ void dragrace_show(){
             if(dragrace.Status.Laeuft == true && dragrace.Status.Gestartet==false){
                 dragrace.Zeiten.Links.Lichtschr2=evt.capture_signal;
                 dragrace.Status.LinkeBahn.Lichschr2=DURCHFAHREN;
-                ESP_LOGI(DRAG, "Lichschr. %s   |  %*u  |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
+                ESP_LOGI(DRAG, "Lichschr.    %s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
 
             }
         }
@@ -257,6 +269,10 @@ void dragrace_show(){
                 dragrace.Zeiten.Links.Lichtschr3=evt.capture_signal;
                 dragrace.Status.LinkeBahn.Lichschr3=DURCHFAHREN;
                 ESP_LOGI(DRAG, "Ziel Links      |  %*u |", 10,evt.capture_signal);
+                // fertig
+                if(dragrace.Status.RechteBahn.Lichschr3){
+                    action(fertig);
+                }
 
             }else{
 
@@ -273,12 +289,9 @@ void dragrace_show(){
                 if(dragrace.Status.LinkeBahn.Lichschr1 == DURCHFAHREN){
                     if(dragrace.Zeiten.Links.Lichtschr1 < dragrace.Zeiten.Links.Start){
                         dragrace.Status.LinkeBahn.Fruehstart=true;
-                        ESP_LOGI(DRAG, "Fehlstart    %s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal-dragrace.Zeiten.Links.Lichtschr1);
                     }
+                    ESP_LOGI(DRAG, "Reaktionszeit%s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal-dragrace.Zeiten.Links.Lichtschr1);
                 }
-
-
-
             }
         }
 
@@ -294,9 +307,8 @@ void dragrace_show(){
 /**
  * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP signal and according take action
  */
- int first=1;
-static void IRAM_ATTR isr_handler()
-{
+
+static void IRAM_ATTR isr_handler(){
     uint32_t mcpwm_unit0_intr_status;
     uint32_t mcpwm_unit1_intr_status;
     BaseType_t xHigherPriorityTaskWoken;
@@ -423,7 +435,6 @@ static void mcpwm_example_config(void *arg){
     mcpwm_isr_register(MCPWM_UNIT_1, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
     vTaskDelete(NULL);
 }
-/**Software Interrupts für Test*/
 void neu(){
     ESP_LOGI(DRAG,"************** NEU **********************");
     ESP_LOGI(DRAG,"Ereignis        |  Linke Bahn | Rechte Bahn");
@@ -440,9 +451,20 @@ void neu(){
     dragrace.Zeiten.Rechts.Lichtschr1=0;
     dragrace.Zeiten.Rechts.Lichtschr2=0;
     dragrace.Zeiten.Rechts.Lichtschr3=0;
+    uint32_t r_max =254; //Zufallszahl Maximum
+    uint32_t r_min = 100;//Minimum
+    uint32_t r = esp_random()%(r_max-r_min);
+    r = r + r_min;
+    ESP_LOGI(DRAG,"Zufälliger Start in %d.%d Sekunden\n",r/100,r%100);
+    dragrace.Zeiten.Time_Random= r;
 
-    convert_to_json();
-    //dragrace_show();
+}
+void fertig(){
+    dragrace.Status.Fertig=true;
+    dragrace.Status.Laeuft=false;
+    dragrace_show();
+    ESP_LOGI(DRAG,"\n%s\n",dragrace.dragrace_Json_String);
+
 }
 void drag_start(){
     if(!dragrace.Status.Laeuft){
@@ -450,40 +472,33 @@ void drag_start(){
         dragrace.Status.Ready=false;
         dragrace_impulse(NULL,0);
     }
-    convert_to_json();
-//    MCPWM[MCPWM_UNIT_0]->cap_cfg_ch[2].sw=1;
-//    dragrace_show();
 }
+/**
+ * Software Interrupts für Test
+ */
 void L1(){
     MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP0].capn_sw=1;
-//    dragrace_show();
 }
 void L2(){
     MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP1].capn_sw=1;
-//    dragrace_show();
 }
 void L3(){
     MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
-//    dragrace_show();
 }
 void R1(){
     MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP0].capn_sw=1;
-//    dragrace_show();
 }
 void R2(){
     MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP1].capn_sw=1;
-//    dragrace_show();
 }
 void R3(){
     MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
-//    dragrace_show();
 }
- void mcpwm_setup()
-{
+
+void mcpwm_setup() {
     printf("Testing MCPWM...\n ");
     cap_queue = xQueueCreate(50, sizeof(capture)); //comment if you don't want to use capture module
-    xTaskCreate(disp_captured_signal, "mcpwm_config", 4096, NULL, 5, NULL);  //comment if you don't want to use capture module
-//    xTaskCreate(gpio_test_signal, "gpio_test_signal", 4096, NULL, 5, NULL); //comment if you don't want to use capture module
+    xTaskCreate(disp_captured_signal, "mcpwm_config", 4096, NULL, 5,NULL);
     xTaskCreate(mcpwm_example_config, "mcpwm_example_config", 4096, NULL, 5, NULL);
 //     char buf[500];
 //     vTaskList(buf);
@@ -493,6 +508,7 @@ void R3(){
 //     ESP_LOGD(TAG,"%s",buf);
 
     //neues Rennen
-    neu();
+    action(neu);
+//    neu();
 }
 
