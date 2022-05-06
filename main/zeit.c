@@ -11,9 +11,7 @@
 #include <cJSON.h>
 
 xQueueHandle cap_queue;
-#if MCPWM_EN_CAPTURE
 static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1};
-#endif
 
 // Interrupt Test
 #define DRAGRACE_INTERRUPT_TEST 0
@@ -69,33 +67,21 @@ void action(void (*f)()){
     convert_to_json();
 }
 
-static void mcpwm_example_gpio_initialize()
-{
     printf("initializing mcpwm gpio...\n");
     ///Interrupt Test Ausgang
 #if DRAGRACE_INTERRUPT_TEST
     dragrace_set_Test_Pin_as_Output(DRAGRACE_PIN_TEST_L1_OUTPUT);
 #endif
 #if MCPWM_GPIO_INIT
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, GPIO_PWM0A_OUT);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0B, GPIO_PWM0B_OUT);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM1A, GPIO_PWM1A_OUT);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM1B, GPIO_PWM1B_OUT);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM2A, GPIO_PWM2A_OUT);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM2B, GPIO_PWM2B_OUT);
+//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, GPIO_CAP2_L_IN);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, GPIO_CAP0_L_IN);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, GPIO_CAP1_L_IN);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, GPIO_CAP2_L_IN);
+
     mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_0, GPIO_CAP0_R_IN);
     mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_1, GPIO_CAP1_R_IN);
     mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_2, GPIO_CAP2_R_IN);
 
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_SYNC_0, GPIO_SYNC0_IN);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_SYNC_1, GPIO_SYNC1_IN);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_SYNC_2, GPIO_SYNC2_IN);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_FAULT_0, GPIO_FAULT0_IN);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_FAULT_1, GPIO_FAULT1_IN);
-//    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_FAULT_2, GPIO_FAULT2_IN);
 #else
     mcpwm_pin_config_t pin_config = {
         .mcpwm0a_out_num = GPIO_PWM0A_OUT,
@@ -122,12 +108,6 @@ static void mcpwm_example_gpio_initialize()
     gpio_pulldown_en(GPIO_CAP0_R_IN);    //Enable pull down on CAP0   signal
     gpio_pulldown_en(GPIO_CAP1_R_IN);    //Enable pull down on CAP1   signal
     gpio_pulldown_en(GPIO_CAP2_R_IN);    //Enable pull down on CAP2   signal
-//    gpio_pulldown_en(GPIO_SYNC0_IN);   //Enable pull down on SYNC0  signal
-//    gpio_pulldown_en(GPIO_SYNC1_IN);   //Enable pull down on SYNC1  signal
-//    gpio_pulldown_en(GPIO_SYNC2_IN);   //Enable pull down on SYNC2  signal
-//    gpio_pulldown_en(GPIO_FAULT0_IN);  //Enable pull down on FAULT0 signal
-//    gpio_pulldown_en(GPIO_FAULT1_IN);  //Enable pull down on FAULT1 signal
-//    gpio_pulldown_en(GPIO_FAULT2_IN);  //Enable pull down on FAULT2 signal
 }
 
 /**
@@ -167,15 +147,10 @@ void dragrace_show(){
  * @brief Auswertung des Interrupts
  *
  */
-_Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
-{
     capture evt;
     static long count=0;
-
-
     while (1) {
         xQueueReceive(cap_queue, &evt, portMAX_DELAY);
-
         /**
          *
          * Rechte BAHN
@@ -316,9 +291,8 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg)
     }
 }
 
-#if MCPWM_EN_CAPTURE
 /**
- * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP0 signal and according take action
+ * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP signal and according take action
  */
  int first=1;
 static void IRAM_ATTR isr_handler()
@@ -421,7 +395,6 @@ static void IRAM_ATTR isr_handler()
     }
 
 }
-#endif
 
 /**
  * @brief Configure whole MCPWM module
@@ -435,7 +408,6 @@ static void mcpwm_example_config(void *arg){
     mcpwm_example_gpio_initialize();
 
 
-#if MCPWM_EN_CAPTURE
     //Capture configuration
     mcpwm
     mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
@@ -449,7 +421,6 @@ static void mcpwm_example_config(void *arg){
     MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
     mcpwm_isr_register(MCPWM_UNIT_0, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
     mcpwm_isr_register(MCPWM_UNIT_1, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
-#endif
     vTaskDelete(NULL);
 }
 /**Software Interrupts für Test*/
@@ -457,10 +428,6 @@ void neu(){
     ESP_LOGI(DRAG,"************** NEU **********************");
     ESP_LOGI(DRAG,"Ereignis        |  Linke Bahn | Rechte Bahn");
     ESP_LOGI(DRAG,"----------------|-------------|------------");
-
-//    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-//    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-//    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, MCPWM_POS_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
 
     dragrace.Status.all=0;
     dragrace.Status.Ready=1;
