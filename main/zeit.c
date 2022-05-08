@@ -5,7 +5,6 @@
 #define  LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 //#define  LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "include/zeit.h"
-#include "include/display.h"
 #include "include/utility.h"
 #include "freertos/semphr.h"
 #include <cJSON.h>
