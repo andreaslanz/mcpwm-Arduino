@@ -3,12 +3,12 @@ idf_component_register(
 
         SRCS
             main.cpp
-#            web.cpp
+#            web.cpp  #läuft nicht
             zeit.c
             serial.c
 #            display.cpp
             utility.cpp
-            web2.c
+#            web2.c  #ok.
 
             #                "C:/ESP/LIB/ThingPulse/esp8266-oled-ssd1306/src/OLEDDisplay.cpp"
             #                "C:/ESP/LIB/sandeepmistry/arduino-LoRa/src/LoRa.cpp"
