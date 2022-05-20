@@ -19,22 +19,34 @@ void dragrace_set_Test_Pin_as_Output(uint32_t pin){
     gpio_config(&gp);
 }
 void dragrace_set_Test_Pin_as_Output_OpenDrain(uint32_t pin){
-    gpio_config_t gp;
+    gpio_config_t gp = {};
     gp.intr_type = GPIO_INTR_DISABLE;
     gp.mode= GPIO_MODE_OUTPUT_OD;
     gp.pin_bit_mask = pin;
     gpio_config(&gp);
 }
 void dragrace_set_Test_Pin_as_Input_Pullup(uint32_t pin){
-    gpio_config_t gp;
+    gpio_config_t gp = {};
     gp.intr_type = GPIO_INTR_DISABLE;
     gp.mode = GPIO_MODE_INPUT;
     gp.pin_bit_mask = pin;
     gp.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config(&gp);
 }
-void dragrace_set_Test_Pin_as_Input_Pulldown(uint32_t pin){
-    gpio_config_t gp;
+void dragrace_set_Test_Pin_as_Input(uint64_t pin){
+    gpio_config_t gp = {};
+    gp.intr_type = GPIO_INTR_DISABLE;
+    gp.mode = GPIO_MODE_INPUT;
+    //gp.mode = GPIO_MODE_INPUT_OUTPUT_OD;
+    gp.pin_bit_mask = pin;
+    //gp.pull_up_en = GPIO_PULLUP_ENABLE;
+    gp.pull_up_en = GPIO_PULLUP_DISABLE;
+    gp.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    esp_err_t e= gpio_config(&gp);
+    ESP_LOGI(TAG,"err:%d",e);
+}
+void dragrace_set_Test_Pin_as_Input_Pulldown(uint64_t  pin){
+    gpio_config_t gp = {};
     gp.intr_type = GPIO_INTR_DISABLE;
     gp.mode = GPIO_MODE_INPUT;
     gp.pin_bit_mask = pin;
@@ -56,6 +68,9 @@ static void  impuls_task(void *pm) {
     if(PM.L1){
         pins |= BIT(DRAGRACE_PIN_TEST_L1_OUTPUT);
     }
+
+    // Log Level
+    esp_log_level_set("gpio", ESP_LOG_WARN);
 
     dragrace_set_Test_Pin_as_Output(pins);
 

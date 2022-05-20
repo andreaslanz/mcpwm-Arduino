@@ -31,6 +31,9 @@ extern "C" {
 #define GPIO_CAP0_R_IN   DRAGRACE_PIN_LICHTSCHRANKE_R1_INPUT
 #define GPIO_CAP1_R_IN   DRAGRACE_PIN_LICHTSCHRANKE_R2_INPUT
 #define GPIO_CAP2_R_IN   DRAGRACE_PIN_LICHTSCHRANKE_R3_INPUT
+
+#define GPIO_CAP_POS_EDGE 0  // Lichtschr.Eing. Positive Flanke
+#define GPIO_CAP_NEG_EDGE 1  // Lichtschr.Eing. Negative Flanke
 /**
  * @brief MCPWM select capture signal input
  */
@@ -101,10 +104,7 @@ typedef union {
     uint8_t val;
 }dr_Bahn_Status_t;
 
-
 typedef union{
-
-
     struct {
         union {
             struct {
@@ -118,11 +118,27 @@ typedef union{
         dr_Bahn_Status_t LinkeBahn;
         dr_Bahn_Status_t RechteBahn;
     };
-
     uint32_t all;
-
 }dr_Status_t;
 
+//Eingänge
+typedef struct {
+    union {
+        struct {
+            uint32_t Neu: 1;
+            uint32_t Start: 1;
+            uint32_t Position_L: 1;
+            uint32_t Position_R: 1;
+            uint32_t Lichtschranke_L1: 1;
+            uint32_t Lichtschranke_L2: 1;
+            uint32_t Lichtschranke_L3: 1;
+            uint32_t Lichtschranke_R1: 1;
+            uint32_t Lichtschranke_R2: 1;
+            uint32_t Lichtschranke_R3: 1;
+        };
+        uint32_t all;
+    };
+}dr_eingaenge_status;
 
 //Zeiten
 typedef struct {
@@ -139,16 +155,61 @@ typedef struct {
     dr_time_lichtschr_t Rechts;
 }dr_Zeiten_t;
 
-extern dr_Zeiten_t Zeiten;
+//Bahnen new
+typedef struct {
+    union {
+        struct {
+            uint8_t Status_Start: 1;
+            uint8_t Status_Start_Ausgewertet: 1;
+            uint8_t Status_Ziel_Ausgewertet: 1;
+            uint8_t Status_L1: 1;
+            uint8_t Status_L2: 1;
+            uint8_t Status_L3: 1;
+            uint8_t Status_Fruehstart: 1;
+            uint8_t Status_Sieg: 1;
+        };
+        uint8_t bahn_status_all;
+    };
+    uint32_t Zeit_L1;
+    uint32_t Zeit_L2;
+    uint32_t Zeit_L3;
+    uint32_t Zeit_Start;
+} bahn_t;
 
+
+
+//Dragrace new
+typedef struct {
+    bahn_t Bahn[2];
+    union {
+        struct {
+            uint8_t Gestartet: 1;
+            uint8_t Laeuft: 1;
+            uint8_t Ready: 1;
+            uint8_t Fertig: 1;
+        };
+        uint8_t race_status_all;
+    };
+    char dragrace_Json_String[500];
+}dr_Dragrace_new_t;
+
+//dr_Dragrace_new_t DR;
+//
+//void f(void){
+//    uint32_t  v=DR.Bahn[DR_LINKS].Zeit_L1;
+//}
+
+//Dragrace
 typedef struct {
     dr_Status_t Status;
     dr_Zeiten_t Zeiten;
+    dr_eingaenge_status Eingaenge;
     char dragrace_Json_String[500];
 }dr_Dragrace_t;
 
 extern  dr_Dragrace_t dragrace;
 extern uint32_t Zahl;
+extern dr_Zeiten_t Zeiten;
 
 
 

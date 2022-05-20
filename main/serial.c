@@ -75,6 +75,7 @@ _Noreturn static void uart_event_task(void *pvParameters)
                         }
                         // Write
 //                        uart_write_bytes(EX_UART_NUM, (const char*) &c, 1);
+
                     }
                     break;
                 default:
@@ -102,7 +103,7 @@ void Serial_Start()
     uart_param_config(EX_UART_NUM, &uart_config);
 
     //Set UART log level
-    esp_log_level_set(TAG, ESP_LOG_INFO);
+    esp_log_level_set(TAG, ESP_LOG_WARN);
     //Set UART pins (using UART0 default pins ie no changes.)
     uart_set_pin(EX_UART_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     //Install UART driver, and get the queue.
