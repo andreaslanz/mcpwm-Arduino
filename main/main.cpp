@@ -45,6 +45,7 @@ void setup()
     Serial_Start();
 
 
+
 #if OLED_DISPLAY
     display_setup();
 #endif
@@ -87,6 +88,6 @@ void setup()
 
 void loop()
 {
-    vTaskDelay(10);
+    vTaskDelay(100);
 }
 
