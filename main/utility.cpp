@@ -10,6 +10,8 @@
 
 const char* TAG = "utility";
 dragrace_puls_struct_t PM;
+static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1}; //MCPWM Register
+TaskHandle_t impulse_task_handle;
 
 void dragrace_set_Test_Pin_as_Output(uint32_t pin){
     gpio_config_t gp;
@@ -60,8 +62,19 @@ static void  impuls_task(void *pm) {
 
     pins=0;
 
+    dragrace.Status_new.Orange1=1;
+    vTaskDelay(100);
+    dragrace_show("Orange2");
+    dragrace.Status_new.Orange2=1;
+    dragrace.Status_new.Orange1=0;
+    vTaskDelay(PM.randomstart);
+    dragrace.Status_new.Orange2=0;
+    dragrace.Status_new.Laeuft_NEW=1;
+    MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
+    MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
+
     if( PM.softstart){
-        dragrace.Status.Gestartet=1;
+        dragrace.Status_old.Gestartet=1;
         ESP_LOGD(TAG,"pm soft start");
     }
 
@@ -81,7 +94,7 @@ static void  impuls_task(void *pm) {
 
     dragrace_set_Test_Pin_as_Input_Pullup(pins);
 
-    vTaskDelete(NULL);
+    vTaskDelete(nullptr);
 }
 
 
@@ -91,8 +104,10 @@ void dragrace_impulse(void *pvParameter1, uint32_t ulParameter2) {
     PM.val=0;
     PM.softstart=1;
     PM.L1=1;
-    if(ulParameter2!=0)
-        vTaskDelay(ulParameter2);
-    xTaskCreate(impuls_task, "pulse", 4096, &PM, 5, NULL);
+    PM.randomstart=dragrace.randomstart;
+
+    //Start Task kreieren
+    impulse_task_handle=NULL;
+    xTaskCreate(impuls_task, "pulse", 4096, &PM, 5, &impulse_task_handle);
 
 }

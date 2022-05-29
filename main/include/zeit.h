@@ -71,7 +71,7 @@ typedef struct {
 //
 typedef  enum {
     DR_LINKS,
-    DR_RECHRS
+    DR_RECHTS
 }dr_Bahn_t;
 
 typedef  enum{
@@ -125,18 +125,16 @@ typedef union{
 typedef struct {
     union {
         struct {
-            uint32_t Neu: 1;
-            uint32_t Start: 1;
-            uint32_t Position_L: 1;
-            uint32_t Position_R: 1;
-            uint32_t Lichtschranke_L1: 1;
-            uint32_t Lichtschranke_L2: 1;
-            uint32_t Lichtschranke_L3: 1;
-            uint32_t Lichtschranke_R1: 1;
-            uint32_t Lichtschranke_R2: 1;
-            uint32_t Lichtschranke_R3: 1;
+            uint8_t Position_L: 1;
+            uint8_t Position_R: 1;
+            uint8_t Lichtschranke_L1: 1;
+            uint8_t Lichtschranke_L2: 1;
+            uint8_t Lichtschranke_L3: 1;
+            uint8_t Lichtschranke_R1: 1;
+            uint8_t Lichtschranke_R2: 1;
+            uint8_t Lichtschranke_R3: 1;
         };
-        uint32_t all;
+        uint8_t all;
     };
 }dr_eingaenge_status;
 
@@ -157,10 +155,20 @@ typedef struct {
 
 //Bahnen new
 typedef struct {
-    union {
+    uint32_t Zeit_L1;
+    uint32_t Zeit_L2;
+    uint32_t Zeit_L3;
+    uint32_t Zeit_Start;
+} dr_bahn_new_t;
+
+
+
+//Status new
+typedef struct {
+    union  {
         struct {
-            uint8_t Status_Start: 1;
-            uint8_t Status_Start_Ausgewertet: 1;
+            uint8_t Status_Start: 1; //Startzeit gespeichert bei "Grün"
+            uint8_t Status_Laeuft: 1;
             uint8_t Status_Ziel_Ausgewertet: 1;
             uint8_t Status_L1: 1;
             uint8_t Status_L2: 1;
@@ -170,28 +178,83 @@ typedef struct {
         };
         uint8_t bahn_status_all;
     };
-    uint32_t Zeit_L1;
-    uint32_t Zeit_L2;
-    uint32_t Zeit_L3;
-    uint32_t Zeit_Start;
-} bahn_t;
+} dr_bahn_status_new_t;
 
-
-
-//Dragrace new
-typedef struct {
-    bahn_t Bahn[2];
-    union {
-        struct {
-            uint8_t Gestartet: 1;
-            uint8_t Laeuft: 1;
-            uint8_t Ready: 1;
-            uint8_t Fertig: 1;
+typedef union {
+    struct{
+        dr_eingaenge_status Eingaenge;
+        union {
+            struct {
+                uint8_t Orange1: 1;
+                uint8_t Orange2: 1;
+                uint8_t Laeuft_NEW: 1;
+                uint8_t Ready_NEW: 1;
+                uint8_t Gestartet_NEW: 1;
+                uint8_t Fertig_New: 1;
+            };
+            uint8_t race_status_all;
         };
-        uint8_t race_status_all;
+        dr_bahn_status_new_t bahn_status_new[2] ;
+
+
     };
-    char dragrace_Json_String[500];
-}dr_Dragrace_new_t;
+    uint32_t  Status_All;
+}dr_status_new_t;
+
+/* Status ist eine 32 - bit Zahl
+
+Bedeutung der einzelnen bit's:
+
+
+BitNr      Bedeutung
+=======================
+
+  Eingänge
+0       Position_L
+1       Position_R
+2       Lichtschranke_L1
+3       Lichtschranke_L2
+4       Lichtschranke_L3
+5       Lichtschranke_R1
+6       Lichtschranke_R2
+7       Lichtschranke_R3
+
+ Rennen Status
+8       Orange1
+9       Orange2
+10      Laeuft=Grün
+11      Ready
+12      Gestartet
+13      Fertig_New
+14      nicht gebraucht
+15      nicht gebraucht
+
+ Linke Bahn
+16      L_Start
+17      L_Laeuft
+18      L_Ausgewertet
+19      L_L1
+20      L_L2
+21      L_L3
+22      L_Fruehstart
+23      L_Sieg
+
+ Rechte Bahn
+24      R_Start
+25      R_Laeuft
+26      R_Ausgewertet
+27      R_L1
+28      R_L2
+29      R_L3
+30      R_Fruehstart
+31      R_Sieg
+
+*/
+
+
+
+
+
 
 //dr_Dragrace_new_t DR;
 //
@@ -201,7 +264,10 @@ typedef struct {
 
 //Dragrace
 typedef struct {
-    dr_Status_t Status;
+    dr_bahn_new_t Zeiten_new[2];
+    dr_status_new_t Status_new;
+    uint32_t randomstart;
+    dr_Status_t Status_old;
     dr_Zeiten_t Zeiten;
     dr_eingaenge_status Eingaenge;
     char dragrace_Json_String[500];
@@ -229,9 +295,10 @@ typedef struct {
 
 static void mcpwm_example_gpio_initialize();
 static void gpio_test_signal(void *arg);
-
+//extern mcpwm_dev_t *MCPWM;
 static void disp_captured_signal(void *arg);
 static void mcpwm_example_config(void *arg);
+void dragrace_show(const char* message);
 void mcpwm_setup();
 void drag_start();
 void neu();

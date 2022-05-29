@@ -1,0 +1,37 @@
+<html>
+<head>
+<title>zeit.c</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #808080;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #bbb529;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+zeit.c</font>
+</center></td></tr></table>
+<pre>
+
+            <span class="s1">/// Lichtschranke 3 Start (Lichtschranke 3 wird zugleich als Start durch Hardware oder Software Interrupt benutzt)</span>
+            <span class="s2">if</span><span class="s0">(!dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start){</span>
+                <span class="s0">dragrace.Zeiten_new[mcpwm_unit].Zeit_Start =   evt.capture_signal</span><span class="s2">;</span>
+                <span class="s0">dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start = true</span><span class="s2">;</span>
+                <span class="s2">if</span><span class="s0">(dragrace.Status_new.bahn_status_new[ ! mcpwm_unit].Status_Start == true){ </span><span class="s1">//andere Bahn schon gestartet</span>
+
+                    <span class="s1">//differenz zwischen Startzeiten</span>
+                    <span class="s0">dragrace.Zeiten_new[DR_RECHTS].Zeit_L3 =  (dragrace.Zeiten_new[!mcpwm_unit].Zeit_Start-dragrace.Zeiten_new[  mcpwm_unit].Zeit_Start)  </span><span class="s2">;</span>
+                    <span class="s1">//message</span>
+                    <span class="s0">dragrace_show(</span><span class="s3">&quot;Gestartet GRUEN&quot;</span><span class="s0">) </span><span class="s2">;</span>
+
+                <span class="s0">}</span>
+
+                <span class="s0">ESP_LOGI(DRAG</span><span class="s2">, </span><span class="s3">&quot;Start Rechts %s |             | %u&quot;</span><span class="s2">, </span><span class="s0">mcpwm_capture_signal_string[evt.sel_cap_signal]</span></pre>
+</body>
+</html>

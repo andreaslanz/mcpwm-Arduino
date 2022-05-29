@@ -33,8 +33,6 @@ static const char* TAG="main.cpp";
 
 void setup()
 {
-    // Test Set Pins as Output
-    //dragrace_set_Test_Pin_as_Output(BIT(DRAGRACE_PIN_TEST_L1_OUTPUT));
 
 #if WEBSERVER2
     //Start Webserver
@@ -42,7 +40,6 @@ void setup()
 #endif
 
 
-    Serial_Start();
 
 
 
@@ -77,7 +74,6 @@ void setup()
 //    Serial.println(F("Task         State Prio Stack Num"));
 //    Serial.println(F("*********************************"));
 //    Serial.println(buf);
-
 
     loopTaskWDTEnabled = true;
     enableLoopWDT();

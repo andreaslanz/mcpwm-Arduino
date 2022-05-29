@@ -38,11 +38,13 @@ _Noreturn static void uart_event_task(void *pvParameters)
                     while(uart_read_bytes(EX_UART_NUM, (uint8_t *) &c, 1, portMAX_DELAY)){
                         if(c=='n'){
                             ESP_LOGI(TAG, "Neu");
-                            action(neu);
+                            neu();
+//                            action(neu);
                         }
                         if(c=='s'){
                             ESP_LOGI(TAG, "Start");
-                            action(drag_start);
+                            drag_start();
+//                            action(drag_start);
                         }
                         if(c=='1'){
                             ESP_LOGI(TAG, "L1");
@@ -111,5 +113,5 @@ void Serial_Start()
 
 
     //Create a task to handler UART event from ISR
-    xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, 12, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 4096, NULL, 7, NULL);
 }

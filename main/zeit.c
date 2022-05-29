@@ -14,7 +14,8 @@
 #include "include/main.h"
 #include "esp_timer.h"
 #include <esp_log.h>
-#define  LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+//#define  LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define  LOG_LOCAL_LEVEL ESP_LOG_WARN
 //#define  LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "include/zeit.h"
 #include "include/utility.h"
@@ -39,6 +40,10 @@ cap_source_sw_t soft_cap_intr;
 static const char *TAG = "zeit.c";
 static const char *DRAG = "\033[0;31m\t....Dragrace...";
 const char* mcpwm_capture_signal_string[]={"L1","L2","L3","R1","R2","R3"};
+const char* mcpwm_capture_fehlstart_string[]={"Fehlstart Links", "Fehlstart Rechts"};
+const char* mcpwm_capture_sieg_string[]={     "Sieg Links",      "Sieg Rechts"};
+const char* mcpwm_capture_start_string[]={     "Start Links",      "Start Rechts"};
+const char* mcpwm_capture_fertig_string[]={   "Fertig",          "Fertig"};
 
 //DEBUGG
 static volatile IRAM_ATTR int interupt_count=0;
@@ -56,7 +61,7 @@ void convert_to_json() {
         cJSON *root = NULL;
         char *out = NULL;
         root =cJSON_CreateObject();
-        cJSON_AddNumberToObject(root,"Status",dragrace.Status.all);
+        cJSON_AddNumberToObject(root,"Status",dragrace.Status_old.all);
         cJSON_AddNumberToObject(root,"Start_Links",dragrace.Zeiten.Links.Start);
         cJSON_AddNumberToObject(root,"Start_Rechts",dragrace.Zeiten.Rechts.Start);
         cJSON_AddNumberToObject(root,"Zeit_L1",dragrace.Zeiten.Links.Lichtschr1);
@@ -96,11 +101,10 @@ static void mcpwm_example_gpio_initialize() {
 #if MCPWM_GPIO_INIT
 //    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, GPIO_CAP2_L_IN);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_0, GPIO_CAP0_L_IN);
-    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, GPIO_CAP1_L_IN);
-    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, GPIO_CAP2_L_IN);
-
     mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_0, GPIO_CAP0_R_IN);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_1, GPIO_CAP1_L_IN);
     mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_1, GPIO_CAP1_R_IN);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM_CAP_2, GPIO_CAP2_L_IN);
     mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM_CAP_2, GPIO_CAP2_R_IN);
 
 #else
@@ -139,14 +143,26 @@ static void mcpwm_example_gpio_initialize() {
 //    gpio_pullup_en(GPIO_CAP1_R_IN);    //Enable pull down on CAP1   signal
 //    gpio_pullup_en(GPIO_CAP2_R_IN);    //Enable pull down on CAP2   signal
 //#endif
-// Ein- Aus-Gänge Init
-    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_FEHLSTART_LINKS_OUTPUT);//FrühStart Links
-    gpio_set_level(DRAGRACE_PIN_FEHLSTART_LINKS_OUTPUT,0);
-    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_POSITION_LAMPE_OUTPUT);//PositionsLampe
-    dragrace_set_Test_Pin_as_Input(1ULL<<DRAGRACE_PIN_POSITION_LINKS_INPUT); //Position Links
-    dragrace_set_Test_Pin_as_Input(1ULL<<DRAGRACE_PIN_NEU_INPUT); //Neu reset
-    dragrace_set_Test_Pin_as_Input(1ULL<<DRAGRACE_PIN_START_INPUT); //Start
 
+/// Ein- Aus-Gänge Initialisieren
+
+    ///EINGAENGE
+    dragrace_set_Test_Pin_as_Input(1ULL<<DRAGRACE_PIN_POSITION_LINKS_INPUT);        //Position in Links
+    dragrace_set_Test_Pin_as_Input(1ULL<<DRAGRACE_PIN_POSITION_RECHTS_INPUT);       //Position in Rechts
+    dragrace_set_Test_Pin_as_Input(1ULL<<DRAGRACE_PIN_NEU_INPUT);                   //Neu in
+    dragrace_set_Test_Pin_as_Input(1ULL<<DRAGRACE_PIN_START_INPUT);                 //Start in
+
+    ///AUSGAENGE
+    dragrace_set_Test_Pin_as_Output(1ULL << DRAGRACE_PIN_POSITION_LAMPE_L_OUTPUT);  //Positions out Links
+    dragrace_set_Test_Pin_as_Output(1ULL << DRAGRACE_PIN_POSITION_LAMPE_R_OUTPUT);  //Positions out Rechts
+    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_FEHLSTART_LINKS_OUTPUT);     //FrühStart out Links
+    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_FEHLSTART_RECHTS_OUTPUT);    //FrühStart out Rechts
+    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_SIEG_LAMPE_R_OUTPUT);        //Sieg out Rechts
+    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_SIEG_LAMPE_L_OUTPUT);        //Sieg out Links
+    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_ORANG1_LAMPE_OUTPUT);        //Orange1 out
+    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_ORANG2_LAMPE_OUTPUT);        //Orange2 out
+    dragrace_set_Test_Pin_as_Output(1ULL<<DRAGRACE_PIN_GRUEN_LAMPE_OUTPUT);         //Grün out
+    gpio_set_level(DRAGRACE_PIN_FEHLSTART_LINKS_OUTPUT,0);
 }
 
 /**
@@ -171,17 +187,18 @@ _Noreturn static void gpio_test_signal(void *arg){
 }
 #define LEN 10
 
-void dragrace_show(){
-    printf("%*d,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u\n",
-           10,dragrace.Status.all,
-           10,dragrace.Zeiten.Links.Start,
-           10,dragrace.Zeiten.Links.Lichtschr1,
-           10,dragrace.Zeiten.Links.Lichtschr2,
-           10,dragrace.Zeiten.Links.Lichtschr3,
-           10,dragrace.Zeiten.Rechts.Start,
-           10,dragrace.Zeiten.Rechts.Lichtschr1,
-           10,dragrace.Zeiten.Rechts.Lichtschr2,
-           10,dragrace.Zeiten.Rechts.Lichtschr3);
+void dragrace_show(const char* message){
+    printf("%*s,%*d,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u\n",
+           16,message,
+           10,dragrace.Status_new.Status_All,
+           10,dragrace.Zeiten_new[DR_LINKS].Zeit_Start,
+           10,dragrace.Zeiten_new[DR_LINKS].Zeit_L1,
+           10,dragrace.Zeiten_new[DR_LINKS].Zeit_L2,
+           10,dragrace.Zeiten_new[DR_LINKS].Zeit_L3,
+           10,dragrace.Zeiten_new[DR_RECHTS].Zeit_Start,
+           10,dragrace.Zeiten_new[DR_RECHTS].Zeit_L1,
+           10,dragrace.Zeiten_new[DR_RECHTS].Zeit_L2,
+           10,dragrace.Zeiten_new[DR_RECHTS].Zeit_L3);
 //    ESP_LOGI(TAG, "Status: L1:%d L2:%d L3:%d Frühstart-Links:%d", dragrace.Status.LinkeBahn.Lichschr1, dragrace.Status.LinkeBahn.Lichschr2, dragrace.Status.LinkeBahn.Lichschr3,dragrace.Status.LinkeBahn.Fruehstart);
 //    ESP_LOGI(TAG, "Status: R1:%d R2:%d R3:%d Frühstart-Rechts:%d", dragrace.Status.RechteBahn.Lichschr1, dragrace.Status.RechteBahn.Lichschr2, dragrace.Status.RechteBahn.Lichschr3,dragrace.Status.RechteBahn.Fruehstart);
 //    ESP_LOGI(TAG, "Status:  Ready:%d Gestartet:%d Läuft:%d Fertig:%d ", dragrace.Status.Ready, dragrace.Status.Gestartet, dragrace.Status.Laeuft, dragrace.Status.Fertig);
@@ -199,16 +216,164 @@ void dragrace_show(){
 _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
     capture evt;
     static long count=0;
+    const char *message;
+    static dr_bahn_status_new_t * bs []= { &dragrace.Status_new.bahn_status_new[DR_LINKS],
+                                           &dragrace.Status_new.bahn_status_new[DR_RECHTS]};
 
     while (1) {
         //esp_log_level_set(DRAG, ESP_LOG_ERROR);
 
         xQueueReceive(cap_queue, &evt, portMAX_DELAY);
-        /**
-         *
-         * Rechte BAHN
-         *
-         * */
+
+
+        /// New
+
+        uint32_t mcpwm_unit=       evt.sel_cap_signal/3; /// Linker oder Rechter Kanal
+        uint32_t mcpwm_cap_int_no= evt.sel_cap_signal%3; /// Lichtschr. Nr 1-3
+        //ESP_LOGI(DRAG, "Unit.    %d Kanal %d\n",mcpwm_unit,mcpwm_cap_int_no);
+
+
+        /// Nur wenn Rennen gestartet wurde!!
+        if( !(dragrace.Status_new.Gestartet_NEW || dragrace.Status_new.Orange1 || dragrace.Status_new.Orange2 || dragrace.Status_new.Laeuft_NEW) )
+            continue;
+
+
+
+        /// Lichtschranke 1 --------------------------------------------------------------------------------------------
+        if(mcpwm_cap_int_no == 0){
+
+            if(  !bs[mcpwm_unit]->Status_L1){
+//            if(  !dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L1){
+
+                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L1 = 1;
+                dragrace.Zeiten_new[mcpwm_unit].Zeit_L1 =   evt.capture_signal;
+                //message
+                dragrace_show(mcpwm_capture_signal_string[evt.sel_cap_signal]) ;
+
+                //                 "----------------|-------------|------------"
+                //                 "Lichschr.    %s |  %*u |"
+                //                 "Lichschr.    %s |             | %u"
+                if(mcpwm_unit==DR_LINKS)
+                    ESP_LOGI(DRAG, "Lichschr.    %s |  %*u |",           mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
+                if(mcpwm_unit==DR_RECHTS)
+                    ESP_LOGI(DRAG, "Lichschr.    %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
+
+                // Rennen noch nicht gestartet = Frühstart
+                if(dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start == 0) {
+                    dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Fruehstart = 1;
+                    if(mcpwm_unit==DR_LINKS)
+                        ESP_LOGI(DRAG, "FrühstartLinks  |             |");
+                    if(mcpwm_unit==DR_RECHTS)
+                        ESP_LOGI(DRAG, "FrühstartRechts |             |");
+                    //message
+                    dragrace_show(mcpwm_capture_fehlstart_string[mcpwm_unit]);
+                }
+
+            }
+
+        }
+        /// Lichtschranke 2 --------------------------------------------------------------------------------------------
+        if(mcpwm_cap_int_no == 1){
+            if(!dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L2 && dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start){
+                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L2 = DURCHFAHREN;
+                dragrace.Zeiten_new[mcpwm_unit].Zeit_L2 =   evt.capture_signal;
+                //             "----------------|-------------|------------"
+                //             "Lichschr.    %s |  %*u |"
+                //             "Lichschr.    %s |             | %u"
+                if(mcpwm_unit==DR_LINKS)
+                ESP_LOGI(DRAG, "Lichschr.    %s |  %*u |",           mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
+                if(mcpwm_unit==DR_RECHTS)
+                ESP_LOGI(DRAG, "Lichschr.    %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
+
+                //message
+                dragrace_show(mcpwm_capture_signal_string[evt.sel_cap_signal]) ;
+
+            }
+        }
+
+
+        /// Lichtschranke 3 --------------------------------------------------------------------------------------------
+        if(mcpwm_cap_int_no == 2){
+
+            /// Lichtschranke 3 Ziel
+            if (!dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L3 && dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start) {
+                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L3 = DURCHFAHREN;
+                dragrace.Zeiten_new[mcpwm_unit].Zeit_L3 =   evt.capture_signal;
+                //message
+                dragrace_show(mcpwm_capture_signal_string[evt.sel_cap_signal]) ;
+
+                // Sieg
+                if ( !bs[mcpwm_unit]->Status_Fruehstart   ){ //kein Frühstart
+                    // anderer Fahrer noch nicht im Ziel oder hat Fehlstart
+                    if(   !bs[!mcpwm_unit]->Status_L3 ||  bs[!mcpwm_unit]->Status_Fruehstart ){
+                        bs[mcpwm_unit]->Status_Sieg = 1;
+                        //message
+                        dragrace_show(mcpwm_capture_sieg_string[mcpwm_unit]) ;
+                    }
+
+                }
+
+                // fertig
+                if(dragrace.Status_new.bahn_status_new[!mcpwm_unit].Status_L3){
+                    dragrace.Status_new.Fertig_New=1;
+                    action(fertig);
+                }
+
+                //             "----------------|-------------|------------"
+                //             "Lichschr.    %s |  %*u |"
+                //             "Lichschr.    %s |             | %u"
+                if(mcpwm_unit==DR_LINKS)
+                    ESP_LOGI(DRAG, "ZielRechts   %s |  %*u  |",          mcpwm_capture_signal_string[evt.sel_cap_signal],10,evt.capture_signal);
+                if(mcpwm_unit==DR_RECHTS)
+                    ESP_LOGI(DRAG, "ZielRechts   %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal]
+                    , evt.capture_signal);
+
+            }
+
+            /// Lichtschranke 3 Start (Lichtschranke 3 wird zugleich als Start durch Hardware oder Software Interrupt benutzt)
+            if(!dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start){
+                dragrace.Zeiten_new[mcpwm_unit].Zeit_Start =   evt.capture_signal;
+                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start = true;
+                if(dragrace.Status_new.bahn_status_new[ ! mcpwm_unit].Status_Start == true){ //andere Bahn schon gestartet
+
+                    //differenz zwischen Startzeiten
+                    dragrace.Zeiten_new[DR_RECHTS].Zeit_L3 =  (dragrace.Zeiten_new[!mcpwm_unit].Zeit_Start-dragrace.Zeiten_new[  mcpwm_unit].Zeit_Start)  ;
+                    //message
+                    dragrace_show("Gestartet GRUEN") ;
+
+                }
+
+                ESP_LOGI(DRAG, "Start Rechts %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal]
+                                                                   , evt.capture_signal);
+
+
+                //Fehlstart?
+                if (dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L1 == DURCHFAHREN) {
+                    if (dragrace.Zeiten_new[mcpwm_unit].Zeit_L1 < dragrace.Zeiten_new[mcpwm_unit].Zeit_Start) {
+                        dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Fruehstart = true;
+                        //message
+                        dragrace_show(mcpwm_capture_fehlstart_string[mcpwm_unit]) ;
+                    }
+                    ESP_LOGI(DRAG, "ReaktionsZeit%s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],
+                             evt.capture_signal - dragrace.Zeiten.Rechts. Lichtschr1);
+
+                }
+            }
+
+
+
+        }
+
+
+        /// Old
+#define OLD 0
+#if OLD==1
+
+            /**
+             *
+             * Rechte BAHN
+             *
+             * */
         //! 1. Lichtschranke Rechts (Start)
         if (evt.sel_cap_signal == MCPWM_UNIT1_SELECT_CAP0) {
 
@@ -216,7 +381,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
                 dragrace.Status.RechteBahn.Lichschr1 = DURCHFAHREN;
                 dragrace.Zeiten.Rechts.Lichtschr1= evt.capture_signal;
                 ///            "----------------|-------------|------------"
-                ESP_LOGI(DRAG, "Lichschr.    %s |             | %u", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
+                ESP_LOGI(DRAG, "Lichschr.    %s |  %*u |", mcpwm_capture_signal_string[evt.sel_cap_signal],evt.capture_signal);
             }
             // Rennen noch nicht gestartet = Frühstart
             if(!dragrace.Status.RechteBahn.Start && evt.sel_cap_signal != MCPWM_UNIT1_SELECT_CAP2) {
@@ -342,12 +507,13 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
                 }
             }
         }
+#endif
 
-        if(!dragrace.Status.LinkeBahn.Start_Ausgewertet && dragrace.Status.LinkeBahn.Start && dragrace.Status.LinkeBahn.Lichschr1){
-            dragrace.Status.LinkeBahn.Start_Ausgewertet=true;
+        if(!dragrace.Status_old.LinkeBahn.Start_Ausgewertet && dragrace.Status_old.LinkeBahn.Start && dragrace.Status_old.LinkeBahn.Lichschr1){
+            dragrace.Status_old.LinkeBahn.Start_Ausgewertet=true;
         }
 
-        dragrace_show();
+        //dragrace_show(message);
         //convert_to_json();
     }
 }
@@ -481,84 +647,181 @@ static void mcpwm_example_config(void *arg){
 #define GPIO_CAP_EDGE MCPWM_NEG_EDGE
 #endif
 
+
+
     mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     //enable interrupt, so each this a rising edge occurs interrupt is triggered
     MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
     MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
     mcpwm_isr_register(MCPWM_UNIT_0, isr_handler, MCPWM_UNIT_0, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
     mcpwm_isr_register(MCPWM_UNIT_1, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
 
+    Serial_Start();
+
+    //neues Rennen
+    //action(neu);
+    neu();
+
     vTaskDelete(NULL);
 }
-void Ausgaenge_Ansteuern_Eingaenge_Abfragen(){
-        uint32_t tickCount= 0;
-        int neuBtnPreviousState=LOW;
-        int startBtnPreviousState=LOW;
-        uint32_t neuBtnLastDebounceTime=0;
-    while(1){
+
+void Ausgaenge_Ansteuern_Eingaenge_Abfragen() {
+    uint32_t tickCount = 0;
+    int neuBtnPreviousState = LOW;
+    int startBtnPreviousState = LOW;
+    static dr_eingaenge_status *e = &dragrace.Eingaenge;
+    TickType_t blink;
+
+    while (1) {
         tickCount++;
         vTaskDelay(10);
-        //Frühstart Links
-        dragrace.Eingaenge.Position_L=gpio_get_level(DRAGRACE_PIN_POSITION_LINKS_INPUT);
-        gpio_set_level(DRAGRACE_PIN_FEHLSTART_LINKS_OUTPUT,dragrace.Status.LinkeBahn.Fruehstart);
-        //Position
-        gpio_set_level(DRAGRACE_PIN_POSITION_LAMPE_OUTPUT,0);
-        int pos_L=gpio_get_level(DRAGRACE_PIN_POSITION_LINKS_INPUT);
-        if(pos_L==0){
-            gpio_set_level(DRAGRACE_PIN_POSITION_LAMPE_OUTPUT,1);
-        }
-        //Neues Rennen
-        int neuBtnCurrentState = gpio_get_level(DRAGRACE_PIN_NEU_INPUT);
-        if(neuBtnCurrentState != neuBtnPreviousState){
-            if(neuBtnCurrentState==HIGH && neuBtnPreviousState==LOW){
+
+        blink = (xTaskGetTickCount()/25)&1L;
+
+
+        ///EINGAENGE abfragen
+        int bt_neu_level    = gpio_get_level(DRAGRACE_PIN_NEU_INPUT);
+        int bt_start_level  = gpio_get_level(DRAGRACE_PIN_START_INPUT);
+        e->Position_L       = gpio_get_level(DRAGRACE_PIN_POSITION_LINKS_INPUT);
+        e->Position_R       = gpio_get_level(DRAGRACE_PIN_POSITION_RECHTS_INPUT);
+        e->Lichtschranke_L1 = gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_L1_INPUT);
+        e->Lichtschranke_L2 = gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_L2_INPUT);
+        e->Lichtschranke_L3 = gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_L3_INPUT);
+        e->Lichtschranke_R1 = gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_R1_INPUT);
+        e->Lichtschranke_R2 = gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_R2_INPUT);
+        e->Lichtschranke_R3 = gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_R3_INPUT);
+
+        ///START
+        gpio_set_level(DRAGRACE_PIN_ORANG1_LAMPE_OUTPUT, dragrace.Status_new.Orange1);
+        gpio_set_level(DRAGRACE_PIN_ORANG2_LAMPE_OUTPUT, dragrace.Status_new.Orange2);
+        gpio_set_level(DRAGRACE_PIN_GRUEN_LAMPE_OUTPUT, dragrace.Status_new.Laeuft_NEW);
+
+        // bls und bsr sind variablen die den aktuellen Bahnstatus enthalten
+        dr_bahn_status_new_t bsl= dragrace.Status_new.bahn_status_new[DR_LINKS];
+        dr_bahn_status_new_t bsr= dragrace.Status_new.bahn_status_new[DR_RECHTS];
+
+        ///Frühstart blinkt
+        gpio_set_level(DRAGRACE_PIN_FEHLSTART_LINKS_OUTPUT,  bsl.Status_Fruehstart  && blink);
+        gpio_set_level(DRAGRACE_PIN_FEHLSTART_RECHTS_OUTPUT, bsr.Status_Fruehstart  && blink);
+
+        ///Sieg blinkt
+        gpio_set_level(DRAGRACE_PIN_SIEG_LAMPE_R_OUTPUT, bsr.Status_Sieg && blink);
+        gpio_set_level(DRAGRACE_PIN_SIEG_LAMPE_L_OUTPUT, bsl.Status_Sieg  && blink);
+
+        ///Positions Lampe L
+        gpio_set_level(DRAGRACE_PIN_POSITION_LAMPE_L_OUTPUT,
+                //Brennt
+           ( !e->Position_L && e->Lichtschranke_L1 && !dragrace.Status_new.Gestartet_NEW)
+                //Blinkt
+                || (!e->Lichtschranke_L1 && blink)  );
+
+        ///Positions Lampe R
+        gpio_set_level(DRAGRACE_PIN_POSITION_LAMPE_R_OUTPUT,
+                //Brennt
+              (!e->Position_R && e->Lichtschranke_R1 && !dragrace.Status_new.Gestartet_NEW)
+                //Blinkt
+                || (!e->Lichtschranke_R1 && blink ) );
+
+        ///Neues Rennen Schalter
+        int neuBtnCurrentState = bt_neu_level;
+        if (neuBtnCurrentState != neuBtnPreviousState) {
+            if (neuBtnCurrentState == HIGH && neuBtnPreviousState == LOW) {
                 neu();
             }
-        neuBtnPreviousState=neuBtnCurrentState;
+            neuBtnPreviousState = neuBtnCurrentState;
         }
-        //Starte Rennen
-        int startBtnCurrentState = gpio_get_level(DRAGRACE_PIN_START_INPUT);
-        if(startBtnCurrentState != startBtnPreviousState){
-            if(startBtnCurrentState==HIGH && startBtnPreviousState==LOW){
+
+        ///Starte Rennen Schalter
+        int startBtnCurrentState = bt_start_level;
+        if (startBtnCurrentState != startBtnPreviousState) {
+            if (startBtnCurrentState == HIGH && startBtnPreviousState == LOW) {
                 drag_start();
             }
-            startBtnPreviousState=startBtnCurrentState;
+            startBtnPreviousState = startBtnCurrentState;
         }
     }
 
 }
+
 void neu(){
     ESP_LOGI(DRAG,"************** NEU **********************");
     ESP_LOGI(DRAG,"Ereignis        |  Linke Bahn | Rechte Bahn");
     ESP_LOGI(DRAG,"----------------|-------------|------------");
 
-    dragrace.Status.all=0;
-    dragrace.Status.Ready=1;
-    dragrace.Zeiten.Time_Start=0;
-    dragrace.Zeiten.Links.Start=0;
-    dragrace.Zeiten.Links.Lichtschr1=0;
-    dragrace.Zeiten.Links.Lichtschr2=0;
-    dragrace.Zeiten.Links.Lichtschr3=0;
-    dragrace.Zeiten.Rechts.Start=0;
-    dragrace.Zeiten.Rechts.Lichtschr1=0;
-    dragrace.Zeiten.Rechts.Lichtschr2=0;
-    dragrace.Zeiten.Rechts.Lichtschr3=0;
+    //delete impulse_task
+    if(impulse_task_handle != NULL && eTaskGetState(impulse_task_handle)!=eDeleted)  {
+        vTaskDelete(impulse_task_handle);
+    }
+
+
+    //new
+    dragrace.Status_new.Status_All=           0;
+    dragrace.Status_new.bahn_status_new[0].bahn_status_all=0;
+    dragrace.Status_new.bahn_status_new[1].bahn_status_all=0;
+    dragrace.Status_new.race_status_all=0;
+    dragrace.Status_new.Ready_NEW=            1;
+    dragrace.Zeiten_new[DR_LINKS]. Zeit_Start=0;
+    dragrace.Zeiten_new[DR_LINKS]. Zeit_L1=   0;
+    dragrace.Zeiten_new[DR_LINKS]. Zeit_L2=   0;
+    dragrace.Zeiten_new[DR_LINKS]. Zeit_L3=   0;
+    dragrace.Zeiten_new[DR_RECHTS].Zeit_Start=0;
+    dragrace.Zeiten_new[DR_RECHTS].Zeit_L1=   0;
+    dragrace.Zeiten_new[DR_RECHTS].Zeit_L2=   0;
+    dragrace.Zeiten_new[DR_RECHTS].Zeit_L3=   0;
     uint32_t r_max =254; //Zufallszahl Maximum
     uint32_t r_min = 100;//Minimum
     uint32_t r = esp_random()%(r_max-r_min);
     r = r + r_min;
     ESP_LOGI(DRAG,"Zufälliger Start in %d.%d Sekunden\n",r/100,r%100);
-    dragrace.Zeiten.Time_Random= r;
+    dragrace.randomstart= r;
+    printf("--------------------------------------------------------------------------------------------------------------------\n");
+    printf("%*s,%*s,%*s,%*s,%*s,%*s,%*s,%*s,%*s,%*s\n",
+           16,"Meldung",
+           10,"Status",
+           10,"L Start",
+           10,"L 1",
+           10,"L 2",
+           10,"L 3",
+           10,"R Start",
+           10,"R 1",
+           10,"R 2",
+           10,"R 3");
+    printf("--------------------------------------------------------------------------------------------------------------------\n");
+
+    char buf[50];
+    sprintf(buf,"Neu in %d.%d Sek.",r/100+1,r%100);
+    dragrace_show(buf);
+
+    //old
+//    dragrace.Status_old.all=0;
+//    dragrace.Status_old.Ready=1;
+//    dragrace.Zeiten.Time_Start=0;
+//    dragrace.Zeiten.Links.Start=0;
+//    dragrace.Zeiten.Links.Lichtschr1=0;
+//    dragrace.Zeiten.Links.Lichtschr2=0;
+//    dragrace.Zeiten.Links.Lichtschr3=0;
+//    dragrace.Zeiten.Rechts.Start=0;
+//    dragrace.Zeiten.Rechts.Lichtschr1=0;
+//    dragrace.Zeiten.Rechts.Lichtschr2=0;
+//    dragrace.Zeiten.Rechts.Lichtschr3=0;
+//    uint32_t r_max =254; //Zufallszahl Maximum
+//    uint32_t r_min = 100;//Minimum
+//    uint32_t r = esp_random()%(r_max-r_min);
+//    r = r + r_min;
+//    ESP_LOGI(DRAG,"Zufälliger Start in %d.%d Sekunden\n",r/100,r%100);
+//    dragrace.Zeiten.Time_Random= r;
+//    dragrace_show("Neu");
 
 }
 void fertig(){
-    dragrace.Status.Fertig=true;
-    dragrace.Status.Laeuft=false;
-    dragrace_show();
+    dragrace.Status_new.Fertig_New=true;
+    dragrace.Status_new.Laeuft_NEW=false;
+    dragrace_show("Fertig");
 //    if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
 //    {
 //        ESP_LOGI(DRAG,"\n%s\n",dragrace.dragrace_Json_String);
@@ -568,13 +831,21 @@ void fertig(){
 
 }
 void drag_start(){
-    if(!dragrace.Status.Laeuft){
-        dragrace.Status.Gestartet=true;
-        dragrace.Status.Ready=false;
-        dragrace_impulse(NULL,dragrace.Zeiten.Time_Random);
+    //new
+    if(dragrace.Status_new.Ready_NEW){
+        dragrace_show("Start Orange1");
+        dragrace.Status_new.Gestartet_NEW=true;
+        dragrace.Status_new.Ready_NEW=false;
+        dragrace_impulse(NULL,dragrace.randomstart);
+    }
+    //old
+    if(!dragrace.Status_old.Laeuft){
+//        dragrace.Status_old.Gestartet=true;
+//        dragrace.Status_old.Ready=false;
+//        dragrace_impulse(NULL,dragrace.Zeiten.Time_Random);
         //vTaskDelay(dragrace.Zeiten.Time_Random);
-        MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
-        MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
+        //MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
+        //MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
     }
 }
 /**
@@ -612,8 +883,5 @@ void mcpwm_setup() {
 //     ESP_LOGD(TAG,"*********************************");
 //     ESP_LOGD(TAG,"%s",buf);
 
-    //neues Rennen
-    action(neu);
-//    neu();
 }
 
