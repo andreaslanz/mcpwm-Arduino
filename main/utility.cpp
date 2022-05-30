@@ -58,15 +58,19 @@ void dragrace_set_Test_Pin_as_Input_Pulldown(uint64_t  pin){
 
 static void  impuls_task(void *pm) {
 
+    /// Start Sequenz
     uint32_t pins;
 
     pins=0;
+    dragrace.Status_new.Gestartet_NEW=true;
+    dragrace.Status_new.Ready_NEW=false;
 
     dragrace.Status_new.Orange1=1;
+    dragrace_show("Start Orange1");
     vTaskDelay(100);
-    dragrace_show("Orange2");
     dragrace.Status_new.Orange2=1;
     dragrace.Status_new.Orange1=0;
+    dragrace_show("Orange2");
     vTaskDelay(PM.randomstart);
     dragrace.Status_new.Orange2=0;
     dragrace.Status_new.Laeuft_NEW=1;
