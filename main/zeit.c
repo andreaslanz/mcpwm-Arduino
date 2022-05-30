@@ -188,7 +188,7 @@ _Noreturn static void gpio_test_signal(void *arg){
 #define LEN 10
 
 void dragrace_show(const char* message){
-    printf("%*s,%*d,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u\n",
+    printf("%*s,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u\n",
            16,message,
            10,dragrace.Status_new.Status_All,
            10,dragrace.Zeiten_new[DR_LINKS].Zeit_Start,
@@ -198,7 +198,8 @@ void dragrace_show(const char* message){
            10,dragrace.Zeiten_new[DR_RECHTS].Zeit_Start,
            10,dragrace.Zeiten_new[DR_RECHTS].Zeit_L1,
            10,dragrace.Zeiten_new[DR_RECHTS].Zeit_L2,
-           10,dragrace.Zeiten_new[DR_RECHTS].Zeit_L3);
+           10,dragrace.Zeiten_new[DR_RECHTS].Zeit_L3,
+           10,interupt_count);
 //    ESP_LOGI(TAG, "Status: L1:%d L2:%d L3:%d Frühstart-Links:%d", dragrace.Status.LinkeBahn.Lichschr1, dragrace.Status.LinkeBahn.Lichschr2, dragrace.Status.LinkeBahn.Lichschr3,dragrace.Status.LinkeBahn.Fruehstart);
 //    ESP_LOGI(TAG, "Status: R1:%d R2:%d R3:%d Frühstart-Rechts:%d", dragrace.Status.RechteBahn.Lichschr1, dragrace.Status.RechteBahn.Lichschr2, dragrace.Status.RechteBahn.Lichschr3,dragrace.Status.RechteBahn.Fruehstart);
 //    ESP_LOGI(TAG, "Status:  Ready:%d Gestartet:%d Läuft:%d Fertig:%d ", dragrace.Status.Ready, dragrace.Status.Gestartet, dragrace.Status.Laeuft, dragrace.Status.Fertig);
@@ -337,7 +338,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
                 if(dragrace.Status_new.bahn_status_new[ ! mcpwm_unit].Status_Start == true){ //andere Bahn schon gestartet
 
                     //differenz zwischen Startzeiten
-                    dragrace.Zeiten_new[DR_RECHTS].Zeit_L3 =  (dragrace.Zeiten_new[!mcpwm_unit].Zeit_Start-dragrace.Zeiten_new[  mcpwm_unit].Zeit_Start)  ;
+                    dragrace.Zeiten_new[DR_RECHTS].Zeit_L3 =  (dragrace.Zeiten_new[mcpwm_unit].Zeit_Start-dragrace.Zeiten_new[  !mcpwm_unit].Zeit_Start)  ;
                     //message
                     dragrace_show("Gestartet GRUEN") ;
 
@@ -522,7 +523,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
  * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP signal and according take action
  */
 
-static void IRAM_ATTR isr_handler(){
+static void IRAM_ATTR isr_handler(const int *unit){
     uint32_t mcpwm_unit0_intr_status;
     uint32_t mcpwm_unit1_intr_status;
     BaseType_t xHigherPriorityTaskWoken;
@@ -564,60 +565,73 @@ static void IRAM_ATTR isr_handler(){
      * Linke Bahn
      * */
     /**Check for interrupt on rising edge on CAP0 signal original*/
-    if (mcpwm_unit0_intr_status & CAP0_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
+    if(*unit==MCPWM_UNIT_0) {
+
+        if (mcpwm_unit0_intr_status & CAP0_INT_EN) {
+            evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
 //        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP0;
-        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        ESP_EARLY_LOGD(TAG,"CAP0-L");
-    }
-    /**Check for interrupt on rising edge on CAP1 signal original*/
-    if (mcpwm_unit0_intr_status & CAP1_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP1;
-        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        ESP_EARLY_LOGD(TAG,"CAP1-L");
-    }
-    /**Check for interrupt on rising edge on CAP2 signal original*/
-    if (mcpwm_unit0_intr_status & CAP2_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP2;
-        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
+            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP0;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            ESP_EARLY_LOGD(TAG, "CAP0-L");
+        }
+        /**Check for interrupt on rising edge on CAP1 signal original*/
+        if (mcpwm_unit0_intr_status & CAP1_INT_EN) {
+            evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
+            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP1;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            ESP_EARLY_LOGD(TAG, "CAP1-L");
+        }
+        /**Check for interrupt on rising edge on CAP2 signal original*/
+        if (mcpwm_unit0_intr_status & CAP2_INT_EN) {
+            evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
+            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP2;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
 //        MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;// Starte Rechts auch gleich
 
-        ESP_EARLY_LOGD(TAG,"CAP2-L");
+            ESP_EARLY_LOGD(TAG, "CAP2-L");
+        }
     }
 
     /*!
      * Rechte Bahn
      * */
     /**Check for interrupt on rising edge on CAP0 signal original*/
-    if (mcpwm_unit1_intr_status & CAP0_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP0;
-        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        ESP_EARLY_LOGD(TAG,"CAP0-R");
-    }
-    /**Check for interrupt on rising edge on CAP1 signal original*/
-    if (mcpwm_unit1_intr_status & CAP1_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP1;
-        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
-        ESP_EARLY_LOGD(TAG,"CAP1-R");
-    }
-    /**Check for interrupt on rising edge on CAP2 signal original*/
-    if (mcpwm_unit1_intr_status & CAP2_INT_EN) {
-        evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
-        evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP2;
-        xQueueSendFromISR(cap_queue, &evt,&xHigherPriorityTaskWoken );
+    if(*unit==MCPWM_UNIT_1) {
+
+        if (mcpwm_unit1_intr_status & CAP0_INT_EN) {
+            evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
+            evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP0;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            ESP_EARLY_LOGD(TAG, "CAP0-R");
+        }
+        /**Check for interrupt on rising edge on CAP1 signal original*/
+        if (mcpwm_unit1_intr_status & CAP1_INT_EN) {
+            evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
+            evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP1;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            ESP_EARLY_LOGD(TAG, "CAP1-R");
+        }
+        /**Check for interrupt on rising edge on CAP2 signal original*/
+        if (mcpwm_unit1_intr_status & CAP2_INT_EN) {
+            evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
+            evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP2;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
 //        MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;// Starte Links auch gleich
 
-        ESP_EARLY_LOGD(TAG,"CAP2-R");
+            ESP_EARLY_LOGD(TAG, "CAP2-R");
+        }
     }
 
     /**Clear Interuppt*/
+    if(*unit==MCPWM_UNIT_0){
+
     MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_unit0_intr_status;
+    }
+
+    if(*unit==MCPWM_UNIT_1){
+
     MCPWM[MCPWM_UNIT_1]->int_clr.val = mcpwm_unit1_intr_status;
+    }
     //return xHigherPriorityTaskWoken == pdTRUE;
 
     if (xHigherPriorityTaskWoken) {
@@ -656,10 +670,18 @@ static void mcpwm_example_config(void *arg){
     mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     //enable interrupt, so each this a rising edge occurs interrupt is triggered
+    static int unit0 = MCPWM_UNIT_0;
+    static int unit1 = MCPWM_UNIT_1;
     MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
     MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
-    mcpwm_isr_register(MCPWM_UNIT_0, isr_handler, MCPWM_UNIT_0, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
-    mcpwm_isr_register(MCPWM_UNIT_1, isr_handler, NULL, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
+
+    MCPWM[MCPWM_UNIT_0]->cap_timer_cfg.cap_synci_en=1;
+    MCPWM[MCPWM_UNIT_1]->cap_timer_cfg.cap_synci_en=1;
+    MCPWM[MCPWM_UNIT_0]->cap_timer_cfg.cap_sync_sw=1;
+    MCPWM[MCPWM_UNIT_1]->cap_timer_cfg.cap_sync_sw=1;
+
+    mcpwm_isr_register(MCPWM_UNIT_0, (void (*)(void *)) isr_handler, &unit0, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
+    mcpwm_isr_register(MCPWM_UNIT_1, (void (*)(void *)) isr_handler, &unit1, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
 
     Serial_Start();
 
@@ -727,6 +749,9 @@ void Ausgaenge_Ansteuern_Eingaenge_Abfragen() {
                 //Blinkt
                 || (!e->Lichtschranke_R1 && blink ) );
 
+
+#if HARDWARE_START_NEU_BTN_ENABLE == 1
+
         ///Neues Rennen Schalter
         int neuBtnCurrentState = bt_neu_level;
         if (neuBtnCurrentState != neuBtnPreviousState) {
@@ -744,6 +769,7 @@ void Ausgaenge_Ansteuern_Eingaenge_Abfragen() {
             }
             startBtnPreviousState = startBtnCurrentState;
         }
+#endif
     }
 
 }
@@ -833,9 +859,6 @@ void fertig(){
 void drag_start(){
     //new
     if(dragrace.Status_new.Ready_NEW){
-        dragrace_show("Start Orange1");
-        dragrace.Status_new.Gestartet_NEW=true;
-        dragrace.Status_new.Ready_NEW=false;
         dragrace_impulse(NULL,dragrace.randomstart);
     }
     //old
