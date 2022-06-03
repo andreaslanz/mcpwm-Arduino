@@ -682,6 +682,8 @@ static void mcpwm_example_config(void *arg){
     MCPWM[MCPWM_UNIT_0]->cap_timer_cfg.cap_sync_sw=1;
     MCPWM[MCPWM_UNIT_1]->cap_timer_cfg.cap_sync_sw=1;
 
+    mcpwm_isr_register(MCPWM_UNIT_0,  isr_handler, &unit0, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
+    mcpwm_isr_register(MCPWM_UNIT_1,  isr_handler, &unit1, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
 
     Serial_Start();
 
