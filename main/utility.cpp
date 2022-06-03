@@ -13,7 +13,7 @@ dragrace_puls_struct_t PM;
 static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1}; //MCPWM Register
 TaskHandle_t impulse_task_handle;
 
-void dragrace_set_Test_Pin_as_Output(uint32_t pin){
+void dragrace_set_Test_Pin_as_Output(uint64_t  pin){
     gpio_config_t gp;
     gp.intr_type = GPIO_INTR_DISABLE;
     gp.mode= GPIO_MODE_OUTPUT;

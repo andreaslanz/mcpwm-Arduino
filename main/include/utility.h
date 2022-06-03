@@ -10,8 +10,8 @@ extern "C" {
 
 #include "freertos/task.h"
 
-void dragrace_set_Test_Pin_as_Output(uint32_t pin);
-void dragrace_set_Test_Pin_as_Input_Pullup(uint32_t pin);
+void dragrace_set_Test_Pin_as_Output(uint64_t pin);
+void dragrace_set_Test_Pin_as_Input_Pullup(uint64_t pin);
 void dragrace_set_Test_Pin_as_Input_Pulldown(uint64_t pin);
 void dragrace_set_Test_Pin_as_Input(uint64_t pin);
 extern TaskHandle_t impulse_task_handle;
