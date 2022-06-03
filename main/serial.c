@@ -46,6 +46,22 @@ _Noreturn static void uart_event_task(void *pvParameters)
                             drag_start();
 //                            action(drag_start);
                         }
+                        if(c==' '){
+                            ESP_LOGI(TAG, "Werte");
+                            dragrace_show("Werte");
+                        }
+                        if(c=='q'){
+                            ESP_LOGI(TAG, "debugg");
+                            if(dragrace.Status_new.Ready_NEW && !dragrace.debugg){
+                            dragrace_show("DebuggOn");
+                            dragrace.debugg=1;
+                                break;
+                            }
+                            if(dragrace.Status_new.Ready_NEW && dragrace.debugg){
+                            dragrace_show("DebuggOff");
+                            dragrace.debugg=0;
+                            }
+                        }
                         if(c=='1'){
                             ESP_LOGI(TAG, "L1");
                             L1();
