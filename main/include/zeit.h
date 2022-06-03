@@ -268,6 +268,7 @@ BitNr      Bedeutung
 typedef struct {
     dr_bahn_new_t Zeiten_new[2];
     dr_status_new_t Status_new;
+    bool debugg;
     uint32_t randomstart;
     dr_Status_t Status_old;
     dr_Zeiten_t Zeiten;

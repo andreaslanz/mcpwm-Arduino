@@ -749,6 +749,14 @@ void Ausgaenge_Ansteuern_Eingaenge_Abfragen() {
                 //Blinkt
                 || (!e->Lichtschranke_R1 && blink ) );
 
+        ///Zustand Lichtschranke vor Start ausgeben
+        if (dragrace.Status_new.Ready_NEW && dragrace.debugg){
+            printf("%*s,%*u\n",
+                   16,"Lichschranken",
+                   10,dragrace.Status_new.Eingaenge.all);
+
+        }
+
 
 #if HARDWARE_START_NEU_BTN_ENABLE == 1
 
@@ -790,6 +798,7 @@ void neu(){
     dragrace.Status_new.bahn_status_new[0].bahn_status_all=0;
     dragrace.Status_new.bahn_status_new[1].bahn_status_all=0;
     dragrace.Status_new.race_status_all=0;
+    dragrace.debugg=0;
     dragrace.Status_new.Ready_NEW=            1;
     dragrace.Zeiten_new[DR_LINKS]. Zeit_Start=0;
     dragrace.Zeiten_new[DR_LINKS]. Zeit_L1=   0;
@@ -859,6 +868,7 @@ void fertig(){
 void drag_start(){
     //new
     if(dragrace.Status_new.Ready_NEW){
+        dragrace.debugg=0;
         dragrace_impulse(NULL,dragrace.randomstart);
     }
     //old
