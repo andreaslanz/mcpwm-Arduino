@@ -523,13 +523,15 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
  * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP signal and according take action
  */
 
-static void IRAM_ATTR isr_handler(const int *unit){
+static void IRAM_ATTR isr_handler(void *u){
+//static void IRAM_ATTR isr_handler(const int *unit){
     uint32_t mcpwm_unit0_intr_status;
     uint32_t mcpwm_unit1_intr_status;
     BaseType_t xHigherPriorityTaskWoken;
     capture evt;
     uint32_t status;
     uint32_t pins;
+    int unit =*(int*)u; ///MCPWM_UNIT_0 oder MCPWM_UNIT_1
 
     xHigherPriorityTaskWoken = pdFALSE;
     interupt_count++;
@@ -565,7 +567,7 @@ static void IRAM_ATTR isr_handler(const int *unit){
      * Linke Bahn
      * */
     /**Check for interrupt on rising edge on CAP0 signal original*/
-    if(*unit==MCPWM_UNIT_0) {
+    if(unit==MCPWM_UNIT_0) {
 
         if (mcpwm_unit0_intr_status & CAP0_INT_EN) {
             evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
@@ -596,7 +598,7 @@ static void IRAM_ATTR isr_handler(const int *unit){
      * Rechte Bahn
      * */
     /**Check for interrupt on rising edge on CAP0 signal original*/
-    if(*unit==MCPWM_UNIT_1) {
+    if(unit==MCPWM_UNIT_1) {
 
         if (mcpwm_unit1_intr_status & CAP0_INT_EN) {
             evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
@@ -623,12 +625,12 @@ static void IRAM_ATTR isr_handler(const int *unit){
     }
 
     /**Clear Interuppt*/
-    if(*unit==MCPWM_UNIT_0){
+    if(unit==MCPWM_UNIT_0){
 
     MCPWM[MCPWM_UNIT_0]->int_clr.val = mcpwm_unit0_intr_status;
     }
 
-    if(*unit==MCPWM_UNIT_1){
+    if(unit==MCPWM_UNIT_1){
 
     MCPWM[MCPWM_UNIT_1]->int_clr.val = mcpwm_unit1_intr_status;
     }
@@ -680,8 +682,6 @@ static void mcpwm_example_config(void *arg){
     MCPWM[MCPWM_UNIT_0]->cap_timer_cfg.cap_sync_sw=1;
     MCPWM[MCPWM_UNIT_1]->cap_timer_cfg.cap_sync_sw=1;
 
-    mcpwm_isr_register(MCPWM_UNIT_0, (void (*)(void *)) isr_handler, &unit0, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
-    mcpwm_isr_register(MCPWM_UNIT_1, (void (*)(void *)) isr_handler, &unit1, ESP_INTR_FLAG_IRAM, NULL);  //Set ISR Handler
 
     Serial_Start();
 
