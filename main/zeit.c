@@ -535,7 +535,14 @@ static void IRAM_ATTR isr_handler(void *u){
 
     xHigherPriorityTaskWoken = pdFALSE;
     interupt_count++;
+#define NEW_isr  1
+#define OLD_isr  0
 
+#if NEW_isr==1
+    ///interrupt status
+    uint32_t mcpwm_intr_status =  MCPWM[unit]->int_st.val;
+#endif
+#if OLD_isr
     /**Read interrupt status Links*/
     mcpwm_unit0_intr_status =  MCPWM[MCPWM_UNIT_0]->int_st.val;
     status=mcpwm_unit0_intr_status &(CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN);
@@ -548,6 +555,7 @@ static void IRAM_ATTR isr_handler(void *u){
     status=status>>27;
     ESP_EARLY_LOGD(TAG,"staR %d ct:%d",status,interupt_count );  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
 
+#endif
 #if DRAGRACE_INTERRUPT_TEST
     /**Test Interrupt während Interrupt auslösen*/
     if(first){
@@ -561,6 +569,42 @@ static void IRAM_ATTR isr_handler(void *u){
     }
 #endif
 
+#if NEW_isr
+    /*!
+     * Neu Beide Bahnen (Bahn steht in "unit")
+     * */
+    uint32_t offset=unit*3;
+
+    /// 3. Lichtschranke
+    if (mcpwm_intr_status & CAP2_INT_EN) {
+        evt.capture_signal = MCPWM[unit]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
+        evt.sel_cap_signal = offset+MCPWM_SELECT_CAP2; //welche Lichtstranke (3 oder 6)
+        xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+        MCPWM[unit]->int_clr.val = CAP2_INT_EN;
+    }
+    /// 1. Lichtschranke
+    if (mcpwm_intr_status & CAP0_INT_EN) {
+        evt.capture_signal = MCPWM[unit]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
+        evt.sel_cap_signal = offset+MCPWM_SELECT_CAP0; //welche Lichtstranke (1 oder 4)
+        xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+        MCPWM[unit]->int_clr.val = CAP0_INT_EN;
+
+    }
+    /// 2. Lichtschranke
+    if (mcpwm_intr_status & CAP1_INT_EN) {
+        evt.capture_signal = MCPWM[unit]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
+        evt.sel_cap_signal = offset+MCPWM_SELECT_CAP1; //welche Lichtstranke (2 oder 5)
+        xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+        MCPWM[unit]->int_clr.val = CAP1_INT_EN;
+
+    }
+    ///clear interrupt status
+    //MCPWM[unit]->int_clr.val = mcpwm_intr_status;
+
+
+#endif
+
+#if OLD_isr
     /*!
      * Linke Bahn
      * */
@@ -636,6 +680,7 @@ static void IRAM_ATTR isr_handler(void *u){
     MCPWM[MCPWM_UNIT_1]->int_clr.val = mcpwm_unit1_intr_status;
     }
     //return xHigherPriorityTaskWoken == pdTRUE;
+#endif
     if (xHigherPriorityTaskWoken) {
         portYIELD_FROM_ISR (); /*Gehe direkt zur Verarbeitung*/
     }
