@@ -531,11 +531,10 @@ static void IRAM_ATTR isr_handler(void *u){
     capture evt;
     uint32_t status;
     uint32_t pins;
-    int unit =*(int*)u; ///MCPWM_UNIT_0 oder MCPWM_UNIT_1
+    int unit =*(int*)u; ///MCPWM_UNIT_0 oder MCPWM_UNIT_1 = Linke oder Rechte Bahn
 
     xHigherPriorityTaskWoken = pdFALSE;
     interupt_count++;
-
 
     /**Read interrupt status Links*/
     mcpwm_unit0_intr_status =  MCPWM[MCPWM_UNIT_0]->int_st.val;
@@ -548,7 +547,6 @@ static void IRAM_ATTR isr_handler(void *u){
     status=mcpwm_unit1_intr_status &(CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN);
     status=status>>27;
     ESP_EARLY_LOGD(TAG,"staR %d ct:%d",status,interupt_count );  /**for Debuging in isr (#define LOG_LOCAL_LEVEL in (this) local file)  */
-
 
 #if DRAGRACE_INTERRUPT_TEST
     /**Test Interrupt während Interrupt auslösen*/
@@ -567,12 +565,15 @@ static void IRAM_ATTR isr_handler(void *u){
      * Linke Bahn
      * */
     /**Check for interrupt on rising edge on CAP0 signal original*/
+
+
     if(unit==MCPWM_UNIT_0) {
 
         if (mcpwm_unit0_intr_status & CAP0_INT_EN) {
             evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
 //        evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_val_ch[MCPWM_SELECT_CAP0]; //get capture signal counter value
-            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP0;
+            evt.sel_cap_signal = unit*3+MCPWM_SELECT_CAP0;
+//            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP0;
             xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
             ESP_EARLY_LOGD(TAG, "CAP0-L");
         }
@@ -635,7 +636,6 @@ static void IRAM_ATTR isr_handler(void *u){
     MCPWM[MCPWM_UNIT_1]->int_clr.val = mcpwm_unit1_intr_status;
     }
     //return xHigherPriorityTaskWoken == pdTRUE;
-
     if (xHigherPriorityTaskWoken) {
         portYIELD_FROM_ISR (); /*Gehe direkt zur Verarbeitung*/
     }
