@@ -675,7 +675,6 @@ static void IRAM_ATTR isr_handler(void *u){
 
     MCPWM[MCPWM_UNIT_1]->int_clr.val = mcpwm_unit1_intr_status;
     }
-    //return xHigherPriorityTaskWoken == pdTRUE;
 #endif
     if (xHigherPriorityTaskWoken) {
         //portYIELD_FROM_ISR (); /*Gehe direkt zur Verarbeitung*/
