@@ -1,4 +1,3 @@
-
 /*
  *
  *
@@ -185,7 +184,6 @@ _Noreturn static void gpio_test_signal(void *arg){
         vTaskDelay(50);         //delay of 10ms
     }
 }
-#define LEN 10
 
 void dragrace_show(const char* message){
     printf("%*s,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u,%*u\n",
@@ -276,7 +274,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
         /// Lichtschranke 2 --------------------------------------------------------------------------------------------
         if(mcpwm_cap_int_no == 1){
             if(!dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L2 && dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start){
-                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L2 = DURCHFAHREN;
+                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L2 = 1;
                 dragrace.Zeiten_new[mcpwm_unit].Zeit_L2 =   evt.capture_signal;
                 //             "----------------|-------------|------------"
                 //             "Lichschr.    %s |  %*u |"
@@ -298,7 +296,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
 
             /// Lichtschranke 3 Ziel
             if (!dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L3 && dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start) {
-                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L3 = DURCHFAHREN;
+                dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_L3 = 1;
                 dragrace.Zeiten_new[mcpwm_unit].Zeit_L3 =   evt.capture_signal;
                 //message
                 dragrace_show(mcpwm_capture_signal_string[evt.sel_cap_signal]) ;
@@ -317,7 +315,7 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
                 // fertig
                 if(dragrace.Status_new.bahn_status_new[!mcpwm_unit].Status_L3){
                     dragrace.Status_new.Fertig_New=1;
-                    action(fertig);
+                   fertig();
                 }
 
                 //             "----------------|-------------|------------"
@@ -600,8 +598,6 @@ static void IRAM_ATTR isr_handler(void *u){
     }
     ///clear interrupt status
     //MCPWM[unit]->int_clr.val = mcpwm_intr_status;
-
-
 #endif
 
 #if OLD_isr
@@ -708,14 +704,14 @@ static void mcpwm_example_config(void *arg){
 #define GPIO_CAP_EDGE MCPWM_NEG_EDGE
 #endif
 
+#define PRESCALE 0L
 
-
-    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
-    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, 0);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP0, GPIO_CAP_EDGE, PRESCALE);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP0, GPIO_CAP_EDGE, PRESCALE);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP1, GPIO_CAP_EDGE, PRESCALE);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP1, GPIO_CAP_EDGE, PRESCALE);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_0, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, PRESCALE);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
+    mcpwm_capture_enable(MCPWM_UNIT_1, MCPWM_SELECT_CAP2, GPIO_CAP_EDGE, PRESCALE);  //capture signal on rising edge, prescale = 0 i.e. 800,000,000 counts is equal to one second
     //enable interrupt, so each this a rising edge occurs interrupt is triggered
     static int unit0 = MCPWM_UNIT_0;
     static int unit1 = MCPWM_UNIT_1;
