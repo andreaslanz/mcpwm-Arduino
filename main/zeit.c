@@ -678,8 +678,9 @@ static void IRAM_ATTR isr_handler(void *u){
     //return xHigherPriorityTaskWoken == pdTRUE;
 #endif
     if (xHigherPriorityTaskWoken) {
-        portYIELD_FROM_ISR (); /*Gehe direkt zur Verarbeitung*/
+        //portYIELD_FROM_ISR (); /*Gehe direkt zur Verarbeitung*/
     }
+    return xHigherPriorityTaskWoken == pdTRUE;
 
 }
 
