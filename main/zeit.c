@@ -521,6 +521,10 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
  * @brief this is ISR handler function, here we check for interrupt that triggers rising edge on CAP signal and according take action
  */
 
+#define NEW_isr  0
+#define NEW2_isr  1
+#define OLD_isr  0
+
 static void IRAM_ATTR isr_handler(void *u){
 //static void IRAM_ATTR isr_handler(const int *unit){
     uint32_t mcpwm_unit0_intr_status;
@@ -533,8 +537,6 @@ static void IRAM_ATTR isr_handler(void *u){
 
     xHigherPriorityTaskWoken = pdFALSE;
     interupt_count++;
-#define NEW_isr  1
-#define OLD_isr  0
 
 #if NEW_isr==1
     ///interrupt status
@@ -567,6 +569,59 @@ static void IRAM_ATTR isr_handler(void *u){
     }
 #endif
 
+#if NEW2_isr==1
+    /**Read interrupt status */
+    while(MCPWM[MCPWM_UNIT_0]->int_st.val &(CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN) || MCPWM[MCPWM_UNIT_1]->int_st.val &(CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN)){
+
+        /// Lichtschr. 3 Links
+        if(MCPWM[MCPWM_UNIT_0]->int_st.cap2_int_st){
+            evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
+            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP2;                                    //get capture signal channel
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);                   //put in "Pipeline"
+            MCPWM[MCPWM_UNIT_0]->int_clr.cap2_int_clr=1;                                     //clear interrupt
+        }
+        /// Lichtschr. 3 Rechts
+        if(MCPWM[MCPWM_UNIT_1]->int_st.cap2_int_st){
+            evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP2].capn_value;
+            evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP2;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            MCPWM[MCPWM_UNIT_1]->int_clr.cap2_int_clr=1;
+        }
+        /// Lichtschr. 1 Links
+        if(MCPWM[MCPWM_UNIT_0]->int_st.cap0_int_st){
+            evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP0].capn_value;
+            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP0;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            MCPWM[MCPWM_UNIT_0]->int_clr.cap0_int_clr=1;
+        }
+        /// Lichtschr. 1 Rechts
+        if(MCPWM[MCPWM_UNIT_1]->int_st.cap0_int_st){
+            evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP0].capn_value;
+            evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP0;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            MCPWM[MCPWM_UNIT_1]->int_clr.cap0_int_clr=1;
+        }
+        /// Lichtschr. 2 Links
+        if(MCPWM[MCPWM_UNIT_0]->int_st.cap1_int_st){
+            MCPWM[0]->int_ena.cap1_int_ena=0;       /// disable interrupt
+            evt.capture_signal = MCPWM[MCPWM_UNIT_0]->cap_chn[MCPWM_SELECT_CAP1].capn_value;
+            evt.sel_cap_signal = MCPWM_UNIT0_SELECT_CAP1;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            MCPWM[MCPWM_UNIT_0]->int_clr.cap1_int_clr=1;
+        }
+        /// Lichtschr. 2 Rechts
+        if(MCPWM[MCPWM_UNIT_1]->int_st.cap1_int_st){
+            MCPWM[1]->int_ena.cap1_int_ena=0;       /// disable interrupt
+            evt.capture_signal = MCPWM[MCPWM_UNIT_1]->cap_chn[MCPWM_SELECT_CAP1].capn_value;
+            evt.sel_cap_signal = MCPWM_UNIT1_SELECT_CAP1;
+            xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
+            MCPWM[MCPWM_UNIT_1]->int_clr.cap1_int_clr=1;
+        }
+
+    }
+#endif
+
+
 #if NEW_isr
     /*!
      * Neu Beide Bahnen (Bahn steht in "unit")
@@ -575,6 +630,8 @@ static void IRAM_ATTR isr_handler(void *u){
 
     /// 3. Lichtschranke
     if (mcpwm_intr_status & CAP2_INT_EN) {
+//        if(dragrace.Status_new.bahn_status_new[unit].Status_Start){
+//            MCPWM[unit]->int_ena.cap2_int_ena=0;} ///disable interrupt
         evt.capture_signal = MCPWM[unit]->cap_chn[MCPWM_SELECT_CAP2].capn_value; //get capture signal counter value
         evt.sel_cap_signal = offset+MCPWM_SELECT_CAP2; //welche Lichtstranke (3 oder 6)
         xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
@@ -582,6 +639,7 @@ static void IRAM_ATTR isr_handler(void *u){
     }
     /// 1. Lichtschranke
     if (mcpwm_intr_status & CAP0_INT_EN) {
+//        MCPWM[unit]->int_ena.cap0_int_ena=0; ///disable interrupt
         evt.capture_signal = MCPWM[unit]->cap_chn[MCPWM_SELECT_CAP0].capn_value; //get capture signal counter value
         evt.sel_cap_signal = offset+MCPWM_SELECT_CAP0; //welche Lichtstranke (1 oder 4)
         xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
@@ -590,6 +648,7 @@ static void IRAM_ATTR isr_handler(void *u){
     }
     /// 2. Lichtschranke
     if (mcpwm_intr_status & CAP1_INT_EN) {
+//        MCPWM[unit]->int_ena.cap1_int_ena=0;
         evt.capture_signal = MCPWM[unit]->cap_chn[MCPWM_SELECT_CAP1].capn_value; //get capture signal counter value
         evt.sel_cap_signal = offset+MCPWM_SELECT_CAP1; //welche Lichtstranke (2 oder 5)
         xQueueSendFromISR(cap_queue, &evt, &xHigherPriorityTaskWoken);
@@ -916,6 +975,13 @@ void drag_start(){
         MCPWM[MCPWM_UNIT_0]->cap_timer_cfg.cap_sync_sw=1;///Zähler auf 0
         MCPWM[MCPWM_UNIT_1]->cap_timer_cfg.cap_sync_sw=1;
 
+        ///clear interrupt
+        MCPWM[0]->int_clr.val = CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN;
+        MCPWM[1]->int_clr.val = CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN;
+        ///enable interrupt
+        MCPWM[0]->int_ena.val |= CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN;
+        MCPWM[1]->int_ena.val |= CAP0_INT_EN|CAP1_INT_EN|CAP2_INT_EN;
+
 #if STARTSPERRE_BEI_LICHTSCHR_1
         if(!gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_L1_INPUT)){
             dragrace_show("L1 belegt");
@@ -927,6 +993,13 @@ void drag_start(){
         }
         if(flag){return;}
 #endif
+        ///enable interrupt again / disabled in isr-handler routine
+//        MCPWM[MCPWM_UNIT_0]->int_clr.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //clear interrupt
+//        MCPWM[MCPWM_UNIT_1]->int_clr.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //clear interrupt
+//        MCPWM[MCPWM_UNIT_0]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
+//        MCPWM[MCPWM_UNIT_1]->int_ena.val = CAP0_INT_EN | CAP1_INT_EN | CAP2_INT_EN;  //Enable interrupt on  CAP0, CAP1 and CAP2 signal
+
+
         dragrace_impulse(NULL,dragrace.randomstart);
     }
     //old
