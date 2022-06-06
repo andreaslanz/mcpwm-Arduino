@@ -914,6 +914,7 @@ void fertig(){
 }
 void drag_start(){
     //new
+    int flag=0;
     if(dragrace.Status_new.Ready_NEW){
         dragrace.debugg=0;
         MCPWM[MCPWM_UNIT_0]->cap_timer_cfg.cap_sync_sw=1;///Zähler auf 0
