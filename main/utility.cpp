@@ -74,8 +74,21 @@ static void  impuls_task(void *pm) {
     vTaskDelay(PM.randomstart);
     dragrace.Status_new.Orange2=0;
     dragrace.Status_new.Laeuft_NEW=1;
+
+
+
+    ///disable interrupt für start
+    MCPWM[0]->int_ena.cap2_int_ena=0;
+    MCPWM[1]->int_ena.cap2_int_ena=0;
+    //Startzeit erfassen durch Software Caputure on channel 2 (3.Lichtschranken)
     MCPWM[MCPWM_UNIT_0]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
     MCPWM[MCPWM_UNIT_1]->cap_chn_cfg[MCPWM_SELECT_CAP2].capn_sw=1;
+    ///enable interrupt
+    MCPWM[0]->int_ena.cap2_int_ena=1;
+    MCPWM[1]->int_ena.cap2_int_ena=1;
+
+    ///Grüne Lampe ein
+    //gpio_set_level(static_cast<gpio_num_t>(DRAGRACE_PIN_GRUEN_LAMPE_OUTPUT), 1);
 
     if( PM.softstart){
         dragrace.Status_old.Gestartet=1;
