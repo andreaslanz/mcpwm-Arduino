@@ -919,6 +919,17 @@ void drag_start(){
         MCPWM[MCPWM_UNIT_0]->cap_timer_cfg.cap_sync_sw=1;///Zähler auf 0
         MCPWM[MCPWM_UNIT_1]->cap_timer_cfg.cap_sync_sw=1;
 
+#if STARTSPERRE_BEI_LICHTSCHR_1
+        if(!gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_L1_INPUT)){
+            dragrace_show("L1 belegt");
+            flag=1;
+        }
+        if(!gpio_get_level(DRAGRACE_PIN_LICHTSCHRANKE_R1_INPUT)){
+            dragrace_show("R1 belegt");
+            flag=1;
+        }
+        if(flag){return;}
+#endif
         dragrace_impulse(NULL,dragrace.randomstart);
     }
     //old

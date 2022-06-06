@@ -17,6 +17,7 @@ extern "C" {
 #include "freertos/semphr.h"
 
 #define HARDWARE_START_NEU_BTN_ENABLE 0
+#define STARTSPERRE_BEI_LICHTSCHR_1 0
 
 #define MCPWM_GPIO_INIT 1    //select which function to use to initialize gpio signals
 #define CAP_SIG_NUM 3   //Three capture signals
