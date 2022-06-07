@@ -798,7 +798,8 @@ void Ausgaenge_Ansteuern_Eingaenge_Abfragen() {
     uint32_t tickCount = 0;
     int neuBtnPreviousState = LOW;
     int startBtnPreviousState = LOW;
-    static dr_eingaenge_status *e = &dragrace.Eingaenge;
+    static dr_eingaenge_status *e = &dragrace.Status_new.Eingaenge;
+//    static dr_eingaenge_status *e = &dragrace.Eingaenge;
     TickType_t blink;
 
     while (1) {
