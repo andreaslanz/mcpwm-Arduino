@@ -41,7 +41,13 @@ idf_component_register(
             #                "C:/ESP/heltec/Heltec_ESP32/examples/Factory_Test/WiFi_LoRa_32FactoryTest"
 
         PRIV_REQUIRES arduino-esp32
-        REQUIRES nvs_flash esp_http_server esp_http_client protocol_examples_common json #webserver
+        REQUIRES
+        #   nvs_flash
+        #   esp_http_server
+        #   esp_http_client
+        #   protocol_examples_common
+            json
+        #   webserver
 )
 
 
