@@ -334,6 +334,8 @@ _Noreturn void IRAM_ATTR disp_captured_signal(void *arg){
                 dragrace.Zeiten_new[mcpwm_unit].Zeit_Start =   evt.capture_signal;
                 dragrace.Status_new.bahn_status_new[mcpwm_unit].Status_Start = true;
                 if(dragrace.Status_new.bahn_status_new[ ! mcpwm_unit].Status_Start == true){ //andere Bahn schon gestartet
+                    ///Grüne Lampe ein
+                    gpio_set_level(DRAGRACE_PIN_GRUEN_LAMPE_OUTPUT, 1);
 
                     //differenz zwischen Startzeiten
                     dragrace.Zeiten_new[DR_RECHTS].Zeit_L3 =  (dragrace.Zeiten_new[mcpwm_unit].Zeit_Start-dragrace.Zeiten_new[  !mcpwm_unit].Zeit_Start)  ;

@@ -87,8 +87,6 @@ static void  impuls_task(void *pm) {
     MCPWM[0]->int_ena.cap2_int_ena=1;
     MCPWM[1]->int_ena.cap2_int_ena=1;
 
-    ///Grüne Lampe ein
-    //gpio_set_level(static_cast<gpio_num_t>(DRAGRACE_PIN_GRUEN_LAMPE_OUTPUT), 1);
 
     if( PM.softstart){
         dragrace.Status_old.Gestartet=1;
