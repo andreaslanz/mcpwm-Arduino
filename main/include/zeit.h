@@ -17,7 +17,7 @@ extern "C" {
 #include "freertos/semphr.h"
 
 ///Programm im Test oder Produktionsmodus
-#define PROGRAMM_MODUS_PRODUCTION  0
+#define PROGRAMM_MODUS_PRODUCTION  1
 
 #define HARDWARE_START_NEU_BTN_ENABLE   PROGRAMM_MODUS_PRODUCTION
 #define STARTSPERRE_BEI_LICHTSCHR_1     PROGRAMM_MODUS_PRODUCTION
