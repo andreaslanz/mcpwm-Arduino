@@ -13,6 +13,41 @@ dragrace_puls_struct_t PM;
 static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1}; //MCPWM Register
 TaskHandle_t impulse_task_handle;
 
+uint16_t CRC16(unsigned char *ptr,unsigned int count)
+{
+    uint16_t crc =0;
+    unsigned char i;
+    while(count>0)
+    {
+        count--;
+        crc = ( crc^(((uint16_t)*ptr)<<8));
+        for(i=0;i<8;i++)
+        {
+            if(crc&0x8000) crc= ((crc<<1)^0x1021);
+            else crc <<= 1;
+        }
+        ptr++;
+    }
+    return crc;
+}
+
+void anzeige(int a,int b,uint8_t *buf){
+    buf[10]=a/1000;     ///1. Zahl
+    buf[11]=a%1000/100;
+    buf[12]=a%100/10;
+    buf[13]=a%10;
+    buf[6]=b/1000;      ///2.Zahl
+    buf[7]=b%1000/100;
+    buf[8]=b%100/10;
+    buf[9]=b%10;
+    uint16_t crc= CRC16(buf,15);
+    uint8_t crc1 = (crc>>8);
+    uint8_t crc2 = (crc&0xff);
+    buf[15]=crc1;       ///Prüfsumme
+    buf[16]=crc2;
+}
+
+
 void dragrace_set_Test_Pin_as_Output(uint64_t  pin){
     gpio_config_t gp;
     gp.intr_type = GPIO_INTR_DISABLE;

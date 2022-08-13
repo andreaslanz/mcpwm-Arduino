@@ -52,6 +52,29 @@ volatile uint32_t  Drag_mcpwm_intr_clr;
 static volatile uint32_t  time;
 //extern void inline ets_delay_us(uint32_t t);
 
+void setup_serial_port_fuer_anzeige() {
+#define SERIAL_IN_PORT_NUM (1)
+#define SERIAL_IN_RXD (0)
+#define SERIAL_IN_TXD (15)
+#define SERIAL_IN_BAUD_RATE (9600)
+#define BUF_SIZE 1024
+
+    ///UART EINGANG konfigurieren
+    uart_config_t uart_config = {
+            .baud_rate = SERIAL_IN_BAUD_RATE,
+            .data_bits = UART_DATA_8_BITS,
+            .parity    = UART_PARITY_DISABLE,
+            .stop_bits = UART_STOP_BITS_1,
+            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+            .source_clk = UART_SCLK_APB,
+    };
+    int intr_alloc_flags = 0;
+    ESP_ERROR_CHECK(uart_driver_install(SERIAL_IN_PORT_NUM, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(SERIAL_IN_PORT_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(SERIAL_IN_PORT_NUM, SERIAL_IN_TXD, SERIAL_IN_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+}
+
 void convert_to_json() {
     if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
     {
@@ -804,6 +827,10 @@ void Ausgaenge_Ansteuern_Eingaenge_Abfragen() {
     static dr_eingaenge_status *e = &dragrace.Status_new.Eingaenge;
 //    static dr_eingaenge_status *e = &dragrace.Eingaenge;
     TickType_t blink;
+    ///Anzeige
+    uint8_t buf[]={0xFE,0x0F,0x01,0x01,0x01,0x24,
+                   1,2,3,4,5,6,7,8,
+                   0xff,0,0};
 
     while (1) {
         tickCount++;
@@ -811,6 +838,18 @@ void Ausgaenge_Ansteuern_Eingaenge_Abfragen() {
 
         blink = (xTaskGetTickCount()/25)&1L;
 
+        ///LED Anzeige Tafel
+        uint32_t a=0;
+        uint32_t b=0;
+
+        if(dragrace.Status_new.bahn_status_new[DR_LINKS].Status_L3){
+            a=(dragrace.Zeiten_new[DR_LINKS].Zeit_L3-dragrace.Zeiten_new[DR_LINKS].Zeit_Start)/80000;
+        }
+        if(dragrace.Status_new.bahn_status_new[DR_RECHTS].Status_L3){
+            b=(dragrace.Zeiten_new[DR_RECHTS].Zeit_L3-dragrace.Zeiten_new[DR_RECHTS].Zeit_Start)/80000;
+        }
+        anzeige(a,b,buf);
+        uart_write_bytes(SERIAL_IN_PORT_NUM,  buf, 17);  ///Ausgabe Buffer
 
         ///EINGAENGE abfragen
         int bt_neu_level    = gpio_get_level(DRAGRACE_PIN_NEU_INPUT);
@@ -1040,6 +1079,7 @@ void R3(){
 
 void mcpwm_setup() {
     printf("Testing MCPWM...\n ");
+    setup_serial_port_fuer_anzeige();
     cap_queue = xQueueCreate(50, sizeof(capture)); //comment if you don't want to use capture module
     xTaskCreate(disp_captured_signal, "mcpwm_config", 4096, NULL, 5,NULL);
     xTaskCreate(mcpwm_example_config, "mcpwm_example_config", 4096, NULL, 5, NULL);
