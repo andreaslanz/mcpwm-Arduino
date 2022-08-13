@@ -8,25 +8,26 @@
  *
  * */
 
-
+#include "driver/uart.h"
 #include <esp_types.h>
 #include "include/main.h"
 #include "esp_timer.h"
 #include <esp_log.h>
-//#define  LOG_LOCAL_LEVEL ESP_LOG_DEBUG
-#define  LOG_LOCAL_LEVEL ESP_LOG_WARN
-//#define  LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "include/zeit.h"
 #include "include/utility.h"
 #include "freertos/semphr.h"
 #include <cJSON.h>
 #include "Arduino.h"
 
+#define  LOG_LOCAL_LEVEL ESP_LOG_WARN
+// Interrupt Test
+#define DRAGRACE_INTERRUPT_TEST 0
+//#define  LOG_LOCAL_LEVEL ESP_LOG_INFO
+//#define  LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 xQueueHandle cap_queue;  //Ereignisse
 static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1}; //MCPWM Register
 
-// Interrupt Test
-#define DRAGRACE_INTERRUPT_TEST 0
 
 // Semaphore
 SemaphoreHandle_t xSemaphore = NULL;
