@@ -954,7 +954,7 @@ void neu(){
     dragrace.Zeiten_new[DR_RECHTS].Zeit_L2=   0;
     dragrace.Zeiten_new[DR_RECHTS].Zeit_L3=   0;
     uint32_t r_max =254; //Zufallszahl Maximum
-    uint32_t r_min = 100;//Minimum
+    uint32_t r_min = 70;//Minimum
     uint32_t r = esp_random()%(r_max-r_min);
     r = r + r_min;
     ESP_LOGI(DRAG,"Zufälliger Start in %d.%d Sekunden\n",r/100,r%100);
